@@ -1,0 +1,60 @@
+
+# epiworldRcalibrate
+
+> BiLSTM-based parameter calibration tools for SIR models built on the
+> epiworldR framework.
+
+------------------------------------------------------------------------
+
+## 📦 Overview
+
+`epiworldRcalibrate` provides fast, deep-learning-based calibration of
+SIR model parameters using a BiLSTM model implemented in PyTorch and
+accessed from R via the `reticulate` package. It allows users to load a
+trained neural network once and make many fast predictions during
+large-scale epidemiological simulations.
+
+------------------------------------------------------------------------
+
+## 🔧 Features
+
+- ✅ Persistent BiLSTM model loading using PyTorch  
+- ✅ Predicts `ptran` (transmission probability), `crate` (contact
+  rate), and `R0`  
+- ✅ One-time initialization with support for cleanup  
+- ✅ Python–R bridge via `reticulate`  
+- ✅ Ready for use in batch simulations or parameter sweeps
+
+------------------------------------------------------------------------
+
+## 📁 Installation
+
+This package is currently not on CRAN. To install it from GitHub:
+
+``` r
+# install.packages("devtools")
+devtools::install_github("sima-njf/epiworldRcalibrate")
+```
+
+``` r
+library(epiworldRcalibrate)
+library(reticulate)
+# Step 1: Load the model (do this once)
+init_bilstm_model("~/Desktop/epiworldRcalibrate_fixed/epiworldRcalibrate/inst/models")
+```
+
+    ## BiLSTM model loaded successfully!
+
+    ## [1] TRUE
+
+``` r
+# Step 2: Predict parameters
+set.seed(42)
+incidence <- abs(rnorm(61, mean = 100, sd = 20))
+params <- predict_sir_bilstm(incidence, n = 5000, recov = 0.1)
+
+print(params)
+```
+
+    ##      ptran      crate         R0 
+    ## 0.08728912 3.02057481 2.25915074
