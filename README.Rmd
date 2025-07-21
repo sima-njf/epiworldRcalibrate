@@ -121,4 +121,4 @@ You can paste this directly into your `README.Rmd` file and render it with:
 devtools::build_readme()
 ````
 
-Let me know if you want to include a logo, a paper citation, or badges (like GitHub actions, license, etc.).
+
