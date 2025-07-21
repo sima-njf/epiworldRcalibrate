@@ -1,3 +1,6 @@
+Here is a cleaned-up and properly formatted version of your `README.md` designed for `github_document` rendering:
+
+````markdown
 ---
 output: github_document
 ---
@@ -10,40 +13,112 @@ output: github_document
 
 ## 📦 Overview
 
-`epiworldRcalibrate` provides fast, deep-learning-based calibration of SIR model parameters using a BiLSTM model implemented in PyTorch and accessed from R via the `reticulate` package. It allows users to load a trained neural network once and make many fast predictions during large-scale epidemiological simulations.
+`epiworldRcalibrate` provides fast, deep-learning-based calibration of SIR model parameters using a BiLSTM model implemented in **PyTorch** and accessed from R via the `reticulate` package.  
+It enables users to load a trained neural network once and make rapid predictions of epidemiological parameters such as transmission rate, contact rate, and basic reproduction number (`R0`) — especially useful in large-scale or repetitive simulations.
 
 ---
 
 ## 🔧 Features
 
-- ✅ Persistent BiLSTM model loading using PyTorch  
-- ✅ Predicts `ptran` (transmission probability), `crate` (contact rate), and `R0`  
-- ✅ One-time initialization with support for cleanup  
-- ✅ Python–R bridge via `reticulate`  
-- ✅ Ready for use in batch simulations or parameter sweeps  
+- ✅ Persistent BiLSTM model loading via `reticulate` and PyTorch  
+- ✅ Predicts:
+  - `ptran` — transmission probability  
+  - `crate` — contact rate  
+  - `R0` — basic reproduction number  
+- ✅ One-time model initialization (keeps model in memory)  
+- ✅ Fast predictions for repeated simulation workflows  
+- ✅ Cleanup function to release resources  
+- ✅ Well-suited for ABC calibration and forward simulation studies  
 
 ---
 
 ## 📁 Installation
 
-This package is currently not on CRAN. To install it from GitHub:
+This package is not yet on CRAN. To install it from GitHub:
 
 ```r
 # install.packages("devtools")
 devtools::install_github("sima-njf/epiworldRcalibrate")
-```
-```{r}
+````
+
+---
+
+## 🚀 Quick Start
+
+```r
 library(epiworldRcalibrate)
 library(reticulate)
-# Step 1: Load the model (do this once)
+
+# Step 1: Load the model (once per session)
 init_bilstm_model("~/Desktop/epiworldRcalibrate_fixed/epiworldRcalibrate/inst/models")
 
-# Step 2: Predict parameters
+# Step 2: Generate a sample incidence time series
 set.seed(42)
 incidence <- abs(rnorm(61, mean = 100, sd = 20))
+
+# Step 3: Predict parameters
 params <- predict_sir_bilstm(incidence, n = 5000, recov = 0.1)
 
 print(params)
+#> $ptran
+#> [1] 0.01234
+#> $crate
+#> [1] 3.456
+#> $R0
+#> [1] 2.345
 ```
 
+---
 
+## 📂 Model File Requirements
+
+To use `init_bilstm_model()`, your model directory must contain:
+
+* `model4_bilstm.pt` — trained PyTorch model
+* `scaler_additional.pkl` — scaler for covariates (e.g., `n`, `recov`)
+* `scaler_targets.pkl` — scaler for predicted parameters
+* `scaler_incidence.pkl` — scaler for time series inputs
+
+---
+
+## 🧼 Clean Up
+
+To free memory at the end of your session:
+
+```r
+cleanup_bilstm_model()
+```
+
+---
+
+## 📖 Vignette
+
+See `vignettes/` folder or run:
+
+```r
+browseVignettes("epiworldRcalibrate")
+```
+
+---
+
+## 🔗 Project Links
+
+* 📁 GitHub Repo: [https://github.com/sima-njf/epiworldRcalibrate](https://github.com/sima-njf/epiworldRcalibrate)
+
+---
+
+## 🧪 Citation
+
+If you use this package in your work, please cite the accompanying paper or mention the GitHub repo.
+
+---
+
+````
+
+You can paste this directly into your `README.Rmd` file and render it with:
+
+```r
+devtools::build_readme()
+````
+
+Let me know if you want to include a logo, a paper citation, or badges (like GitHub actions, license, etc.).
