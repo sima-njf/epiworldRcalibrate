@@ -1,0 +1,191 @@
+---
+title: "LSTM-Based Calibration for a Single SIR Parameter Set"
+author: "Sima"
+output: rmarkdown::html_vignette
+vignette:
+  %\VignetteIndexEntry{LSTM-Based Calibration for a Single SIR Parameter Set}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+
+## Load Required Libraries
+We begin by loading the necessary packages. These include the epiworldR suite for simulation, the custom epiworldRcalibrate package for BiLSTM-based parameter inference, and plotting tools.
+
+```{r}
+library(tidyverse)
+library(epiworldR)
+library(epiworldRcalibrate)
+library(reticulate)
+library(ggplot2)
+library(patchwork)
+```
+
+## Generate a Single Parameter Set
+We randomly generate a single set of SIR model parameters to simulate a ground-truth epidemic.
+
+```{r}
+set.seed(122)
+n_value <- sample(5000:10000, 1)
+preval <- runif(1, 0.007, 0.02)
+crate <- runif(1, 1, 5)
+recov <- runif(1, 0.071, 0.25)
+R0 <- runif(1, 1.1, 5)
+ptran <- (R0 * recov / crate)
+
+true_params <- data.frame(
+  n = n_value,
+  prevalence = preval,
+  contact_rate = crate,
+  transmission_rate = ptran,
+  recovery_rate = recov,
+  R0 = R0
+)
+```
+
+## Run True Simulation
+We now simulate the epidemic using the SIR model with our true parameters.
+
+```{r}
+ndays <- 60
+true_model <- ModelSIRCONN(
+  name = "true_simulation",
+  n = true_params$n,
+  prevalence = true_params$prevalence,
+  contact_rate = true_params$contact_rate,
+  transmission_rate = true_params$transmission_rate,
+  recovery_rate = true_params$recovery_rate
+)
+run(true_model, ndays = ndays)
+incidence_data <- plot_incidence(true_model, plot = FALSE)
+incidence_ts <- incidence_data[, 1]
+```
+
+## Predict Parameters using LSTM
+Next, we use the `epiworldRcalibrate` package to load a pretrained BiLSTM model and predict parameters based on the simulated incidence data.
+
+```{r}
+init_bilstm_model("~/Desktop/epiworldRcalibrate_fixed/epiworldRcalibrate/inst/models")
+lstm_predictions <- predict_sir_bilstm(incidence_ts, n = true_params$n, recov = true_params$recovery_rate)
+
+lstm_params <- data.frame(
+  n = true_params$n,
+  prevalence = true_params$prevalence,
+  contact_rate = (lstm_predictions$R0 * true_params$recovery_rate) / lstm_predictions$ptran,
+  transmission_rate = lstm_predictions$ptran,
+  recovery_rate = true_params$recovery_rate,
+  R0 = lstm_predictions$R0
+)
+```
+
+## Compare True vs LSTM Parameters
+This block prepares a table of both true and predicted parameters for further comparison and simulation.
+
+```{r}
+params_comparison <- bind_rows(
+  true_params %>% mutate(param_type = "true"),
+  lstm_params %>% mutate(param_type = "lstm")
+) %>% mutate(sim_id = 1, run_id = row_number())
+```
+
+## Run Multiple Simulations
+We run multiple replicates of the SIR model for each parameter set to understand variability and average behavior.
+
+```{r}
+n_reps <- 100
+all_simulation_results <- tibble()
+
+for (i in seq_len(nrow(params_comparison))) {
+  row <- params_comparison[i, ]
+  forward_model <- ModelSIRCONN(
+    name = paste0("forward_", row$param_type),
+    n = row$n,
+    prevalence = row$prevalence,
+    contact_rate = row$contact_rate,
+    transmission_rate = row$transmission_rate,
+    recovery_rate = row$recovery_rate
+  )
+  saver <- make_saver("total_hist")
+  run_multiple(forward_model, ndays = ndays, nsims = n_reps, saver = saver, nthreads = 4)
+  results <- run_multiple_get_results(forward_model)
+  sim_data <- results$total_hist %>%
+    group_by(date, state) %>%
+    summarize(mean_count = mean(counts),
+              ci_lower = quantile(counts, 0.025),
+              ci_upper = quantile(counts, 0.975), .groups = "drop") %>%
+    mutate(param_type = row$param_type, sim_id = row$sim_id)
+  all_simulation_results <- bind_rows(all_simulation_results, sim_data)
+}
+```
+
+## Visualize Results
+We generate comparative plots of Susceptible, Infected, and Recovered individuals over time, including confidence intervals for the LSTM-based predictions.
+
+```{r}
+method_colors <- c("true" = "#440154FF", "lstm" = "#35B779FF")
+
+create_sir_plot <- function(data, state_name, title) {
+  plot_data <- data %>% filter(state == state_name)
+  ggplot(plot_data, aes(x = date, color = param_type)) +
+    geom_ribbon(data = plot_data %>% filter(param_type == "lstm"),
+                aes(ymin = ci_lower, ymax = ci_upper, fill = param_type), alpha = 0.2, color = NA) +
+    geom_line(aes(y = mean_count), size = 1.2) +
+    scale_color_manual(values = method_colors) +
+    scale_fill_manual(values = method_colors) +
+    labs(title = title, x = "Day", y = "Count (95% CI)", color = "Method", fill = "Method") +
+    theme_minimal() +
+    theme(legend.position = "bottom", plot.title = element_text(size = 12, hjust = 0.5))
+}
+
+p_susceptible <- create_sir_plot(all_simulation_results, "Susceptible", "Susceptible Over Time")
+p_infected <- create_sir_plot(all_simulation_results, "Infected", "Infected Over Time")
+p_recovered <- create_sir_plot(all_simulation_results, "Recovered", "Recovered Over Time")
+
+(p_susceptible / p_infected / p_recovered) +
+  plot_layout(guides = "collect") +
+  plot_annotation(title = "SIR Model Comparison: True vs LSTM Parameters",
+                  subtitle = paste0("Single parameter set with ", n_reps, " replicates each"))
+```
+
+## Calculate Bias
+We compare the inferred parameters to their ground truth values and summarize differences in epidemic trajectories.
+
+```{r}
+param_bias <- data.frame(
+  Parameter = c("Contact Rate", "Transmission Rate", "R0"),
+  True = c(true_params$contact_rate, true_params$transmission_rate, true_params$R0),
+  LSTM = c(lstm_params$contact_rate, lstm_params$transmission_rate, lstm_params$R0)
+) %>% mutate(Bias = LSTM - True, Relative_Bias = (LSTM - True) / True * 100)
+
+trajectory_comparison <- all_simulation_results %>%
+  filter(state == "Infected") %>%
+  select(date, param_type, mean_count) %>%
+  pivot_wider(names_from = param_type, values_from = mean_count) %>%
+  mutate(bias = lstm - true, relative_bias = (lstm - true) / true * 100)
+
+bias_summary <- trajectory_comparison %>%
+  summarize(mean_bias = mean(bias, na.rm = TRUE),
+            mean_abs_bias = mean(abs(bias), na.rm = TRUE),
+            rmse = sqrt(mean(bias^2, na.rm = TRUE)),
+            mean_relative_bias = mean(relative_bias, na.rm = TRUE))
+```
+
+## Save Results
+All analysis results, including parameter estimates, simulation outputs, and bias summaries are saved for future use.
+
+```{r}
+results_list <- list(
+  true_parameters = true_params,
+  lstm_parameters = lstm_params,
+  parameter_comparison = params_comparison,
+  simulation_results = all_simulation_results,
+  parameter_bias = param_bias,
+  trajectory_bias = bias_summary
+)
+
+saveRDS(results_list, "single_param_comparison_results.rds")
+```
+
+## Conclusion
+This vignette illustrates how to simulate a ground-truth epidemic using `epiworldR`, apply a BiLSTM-based parameter inference method with `epiworldRcalibrate`, and compare predicted versus true epidemic dynamics and parameter values through visual and statistical analysis.

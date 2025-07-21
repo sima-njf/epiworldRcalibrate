@@ -1,0 +1,28 @@
+Package: epiworldRcalibrate
+Title: Calibration with LSTM models
+Version: 0.0.1
+Authors@R: 
+    person("Sima", "Najafzadehkhoei", , "sima.njf@utah.edu", role = c("aut", "cre"),
+           comment = c(ORCID = "YOUR-ORCID-ID"))
+Description: Provides functions for calibration using Long-short term memory (LSTM).
+    The package includes the pre-treined model which can be used directly on your data to do the calibration.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Suggests: 
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Imports:
+    epiworldR,
+    data.table,
+    tensorflow,
+    parallel,
+    keras3,
+    dplyr,
+    ggplot2 (>= 3.4.0),
+    stats,
+    reticulate
+VignetteBuilder: knitr
