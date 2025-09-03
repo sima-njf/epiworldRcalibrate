@@ -68,7 +68,16 @@ print(incidence_ts)
 Next, we use the `epiworldRcalibrate` package to load a pretrained BiLSTM model and predict parameters based on the simulated incidence data.
 
 ```{r}
-init_bilstm_model("~/Desktop/epiworldRcalibrate_fixed/epiworldRcalibrate/inst/models")
+# Look for "inst/models" inside the installed package
+model_dir <- system.file("models", package = "epiworldRcalibrate", mustWork = FALSE)
+
+# Initialize only if the directory actually exists
+if (nzchar(model_dir) && dir.exists(model_dir)) {
+  init_bilstm_model(model_dir)
+} else {
+  message("⚠️ BiLSTM model directory not found in installed package; skipping LSTM initialization.")
+}
+
 lstm_predictions <- predict_sir_bilstm(incidence_ts, n = true_params$n, recov = true_params$recovery_rate)
 
 lstm_params <- data.frame(
