@@ -1,35 +1,37 @@
 Package: epiworldRcalibrate
 Title: Calibration with LSTM Models
 Version: 0.0.1
-Authors@R: c(
-  person("George", "Vega Yon", role = c("aut","cre"), email = "g.vegayon@gmail.com",
-         comment = c(ORCID = "0000-0002-3171-0844")),
-  person("Bernardo", "Modenesi", role = "aut", email = "bmodenesi@gmail.com"),
-  person("Sima", "Najafzadehkhoei", role = "aut", email = "sima.njf@utah.edu",
-         comment = c(ORCID = "0009-0002-6253-2910"))
-)
+Authors@R:
+    c(
+      person("George", "Vega Yon", role = c("aut","cre"), email = "g.vegayon@gmail.com",
+             comment = c(ORCID = "0000-0002-3171-0844")),
+      person("Bernardo", "Modenesi", role = "aut", email = "bmodenesi@gmail.com"),
+      person("Sima", "Najafzadehkhoei", role = "aut", email = "sima.njf@utah.edu",
+             comment = c(ORCID = "0009-0002-6253-2910"))
+    )
 Description: Functions for calibration using long short-term memory (LSTM) models.
     Includes a pre-trained model that can be used directly on your data.
 License: GPL (>= 3)
+URL: https://sima-njf.github.io/epiworldRcalibrate/, https://github.com/sima-njf/epiworldRcalibrate
+BugReports: https://github.com/sima-njf/epiworldRcalibrate/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
-URL: https://sima-njf.github.io/epiworldRcalibrate/, https://github.com/sima-njf/epiworldRcalibrate
-BugReports: https://github.com/sima-njf/epiworldRcalibrate/issues
 Imports:
     epiworldR,
     data.table,
-    tensorflow,
     parallel,
-    keras3,
     dplyr,
     ggplot2 (>= 3.4.0),
     stats,
     reticulate,
-    tidyverse,
     patchwork
 Suggests:
     testthat (>= 3.0.0),
-    quarto
+    quarto,
+    tidyverse,
+    tensorflow,
+    keras3
 Config/testthat/edition: 3
 VignetteBuilder: quarto
+Config/Needs/website: pkgdown, quarto
