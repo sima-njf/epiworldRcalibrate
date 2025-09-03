@@ -2,6 +2,11 @@ template:
   bootstrap: 5
 
 url: https://sima-njf.github.io/epiworldRcalibrate/
+# If your repo is github.com/sima-njf/epiworldRcalibrate, pkgdown will auto-detect.
+# You can set repo url explicitly if you like:
+# repo:
+#   url: https://github.com/sima-njf/epiworldRcalibrate
+#   branch: main
 
 navbar:
   title: "epiworldRcalibrate"
@@ -33,6 +38,6 @@ footer:
     left: [developed_by, built_with]
     right: [package]
   components:
-    developed_by: "Developed by [Sima Najafzadehkhoei](https://github.com/sima-njf)"
-    built_with: "Built with [pkgdown](https://pkgdown.r-lib.org/)"
+    developed_by: 'Developed by <a href="https://github.com/sima-njf">Sima Najafzadehkhoei</a>'
+    built_with: 'Built with <a href="https://pkgdown.r-lib.org/">pkgdown</a>'
     package: "epiworldRcalibrate"

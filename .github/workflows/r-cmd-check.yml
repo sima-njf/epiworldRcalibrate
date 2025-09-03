@@ -1,13 +1,15 @@
-# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
-# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
+name: R-CMD-check
+
 on:
   push:
     branches: [main, master]
   pull_request:
     branches: [main, master]
-name: R-CMD-check
+
 env:
   GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+  R_KEEP_PKG_SOURCE: yes
+
 jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
@@ -19,50 +21,43 @@ jobs:
           - {os: macOS-latest,   r: 'release'}
           - {os: windows-latest, r: 'release'}
           - {os: windows-latest, r: 'devel', http-user-agent: 'release'}
-          - {os: ubuntu-latest,  r: 'devel', http-user-agent: 'release'}
+          - {os: ubuntu-latest,  r: 'devel',  http-user-agent: 'release'}
           - {os: ubuntu-latest,  r: 'release'}
           - {os: ubuntu-latest,  r: 'oldrel'}
-    env:
-      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-      R_KEEP_PKG_SOURCE: yes
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: r-lib/actions/setup-r@v2
         with:
           r-version: ${{ matrix.config.r }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
+          install-r: true
+
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::rcmdcheck
           needs: check
           install-pandoc: true
 
-      # Installing the package and checking the installation
-      # and building log
+      # Optional: quick sanity install on Windows
       - name: Install the package and show installation log
         if: ${{ matrix.config.os == 'windows-latest' }}
         run: |
           Rscript -e "install.packages('.', repos = NULL, type = 'source')"
           Rscript -e "library(epiworldRcalibrate)"
 
+      # Run full checks
       - uses: r-lib/actions/check-r-package@v2
-        if: ${{ matrix.config.os == 'ubuntu-latest' && matrix.config.r == 'release' }}
         with:
           args: 'c("--as-cran", "--no-manual")'
-          upload-snapshots: false
-          upload-results: false
-          check-dir: '"check"'
-          error-on: '"warning"'
-
-      - uses: r-lib/actions/check-r-package@v2
-        if: ${{ matrix.config.os != 'ubuntu-latest' || matrix.config.r != 'release' }}
-        with:
           upload-snapshots: false
           upload-results: true
           check-dir: '"check"'
           error-on: '"warning"'
 
+      # Build tarball on ubuntu (helpful as artifact)
       - name: Build the package
         if: ${{ matrix.config.os == 'ubuntu-latest' && (matrix.config.r == 'release' || matrix.config.r == 'devel') }}
         run: R CMD build .
@@ -70,6 +65,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: ${{ matrix.config.os == 'ubuntu-latest' && (matrix.config.r == 'release' || matrix.config.r == 'devel') }}
         with:
-          name: epiworldRcalibrate-built-package-${{ matrix.config.os }}-${{ matrix.config.r }}
+          name: epiworldRcalibrate-built-${{ matrix.config.os }}-${{ matrix.config.r }}
           path: epiworldRcalibrate*.tar.gz
           retention-days: 7
