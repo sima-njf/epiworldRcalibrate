@@ -1,3 +1,10 @@
+
+---
+
+# 2) `DESCRIPTION`  
+(ready for Quarto + pkgdown; lighter CI)
+
+```r
 Package: epiworldRcalibrate
 Title: Calibration with LSTM Models
 Version: 0.0.1
