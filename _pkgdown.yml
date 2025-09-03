@@ -2,11 +2,6 @@ template:
   bootstrap: 5
 
 url: https://sima-njf.github.io/epiworldRcalibrate/
-# If your repo is github.com/sima-njf/epiworldRcalibrate, pkgdown will auto-detect.
-# You can set repo url explicitly if you like:
-# repo:
-#   url: https://github.com/sima-njf/epiworldRcalibrate
-#   branch: main
 
 navbar:
   title: "epiworldRcalibrate"
@@ -17,6 +12,7 @@ navbar:
       href: reference/index.html
   right:
     - icon: fab fa-github
+      aria-label: "GitHub repository"
       href: "https://github.com/sima-njf/epiworldRcalibrate"
 
 home:
@@ -29,7 +25,6 @@ authors:
 
 articles:
   - title: "Getting Started"
-    navbar: ~
     contents:
       - calibration_explanation
 

@@ -1,5 +1,5 @@
 ---
-title: "Introduction to a Lstm-based calibration"
+title: "Introduction to a LSTM-based Calibration"
 author: "Sima Najafzadehkhoei"
 date: today
 format: html
@@ -8,6 +8,7 @@ vignette: >
   %\VignetteEngine{quarto::format}
   %\VignetteEncoding{UTF-8}
 ---
+
 
 ## Load Required Libraries
 We begin by loading the necessary packages. These include the epiworldR suite for simulation, the custom epiworldRcalibrate package for BiLSTM-based parameter inference, and plotting tools.
