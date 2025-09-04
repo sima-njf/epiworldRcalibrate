@@ -118,7 +118,7 @@ def cleanup():
   # Resolve model_dir
   if (is.null(model_dir)) {
     # Prefer an installed package path (inst/models) if present
-    pkg_dir <- system.file("inst/models", package = "epiworldRcalibrate")
+    pkg_dir <- system.file("models", package = "epiworldRcalibrate")
     if (nzchar(pkg_dir)) {
       model_dir <- pkg_dir
     } else {
