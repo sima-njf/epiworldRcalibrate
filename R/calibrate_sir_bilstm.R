@@ -287,6 +287,9 @@ calibrate_sir_bilstm <- function(time_series, n, recov, model_dir = NULL, auto_i
 #' @export
 #' @examples
 #' \dontrun{
+#' # First time: configure Python
+#' configure_python_env()
+#'
 #' # Auto-detect model location
 #' init_bilstm_model()
 #'
@@ -401,4 +404,44 @@ show_model_search_paths <- function() {
   }
 
   invisible(search_paths)
+}
+
+#' Vignette-safe BiLSTM prediction
+#'
+#' A wrapper function specifically designed for use in vignettes and examples.
+#' Automatically uses fallback methods when model files are not available.
+#'
+#' @param time_series Numeric vector of length 61 (incidence)
+#' @param n Numeric (>0). Population size
+#' @param recov Numeric (>0). Recovery rate
+#' @param prefer_mock Logical. If TRUE, prefer mock data over simple heuristics
+#' @return Named numeric vector `c(ptran, crate, R0)`
+#' @export
+#' @examples
+#' # Safe for vignettes - won't fail if model unavailable
+#' ts <- abs(rnorm(61, 100, 20))
+#' result <- vignette_safe_predict(ts, n = 5000, recov = 0.1)
+vignette_safe_predict <- function(time_series, n, recov, prefer_mock = TRUE) {
+  fallback <- if (prefer_mock) "mock" else "simple"
+
+  if (.is_vignette_mode() || !has_bilstm_models()) {
+    # In vignette/CI mode or no models available - use fallback immediately
+    return(.fallback_prediction(time_series, n, recov, method = fallback))
+  }
+
+  # Try real prediction, fall back if it fails
+  calibrate_sir_bilstm(time_series, n, recov, fallback_method = fallback)
+}
+
+#' Check if BiLSTM model files are available
+#' @param model_dir Optional path to model directory
+#' @return Logical indicating if model files exist
+#' @export
+has_bilstm_models <- function(model_dir = NULL) {
+  tryCatch({
+    resolved_dir <- .resolve_model_dir(model_dir)
+    TRUE
+  }, error = function(e) {
+    FALSE
+  })
 }
