@@ -108,6 +108,77 @@ def cleanup():
     _scaler_inc = None
 "
 
+#' Resolve model directory path across platforms
+#' @param model_dir User-provided path (optional)
+#' @return Resolved, normalized path to model directory
+#' @keywords internal
+.resolve_model_dir <- function(model_dir = NULL) {
+  if (!is.null(model_dir)) {
+    # User provided a path - validate and normalize it
+    expanded_path <- path.expand(model_dir)
+    if (!dir.exists(expanded_path)) {
+      stop(sprintf("Specified model directory does not exist: %s", model_dir))
+    }
+    return(normalizePath(expanded_path, mustWork = TRUE))
+  }
+
+  # Try multiple fallback locations in order of preference
+  search_paths <- c(
+    # 1. Installed package models directory (most preferred)
+    system.file("models", package = "epiworldRcalibrate"),
+
+    # 2. extdata directory (alternative package location)
+    system.file("extdata", "models", package = "epiworldRcalibrate"),
+
+    # 3. Current working directory + models
+    file.path(getwd(), "models"),
+    file.path(getwd(), "inst", "models"),
+
+    # 4. User's home directory + models
+    file.path(path.expand("~"), "epiworldRcalibrate_models"),
+
+    # 5. Common system locations based on OS
+    switch(Sys.info()["sysname"],
+           "Windows" = c(
+             file.path(Sys.getenv("USERPROFILE"), "Documents", "R", "epiworldRcalibrate", "models"),
+             file.path(Sys.getenv("LOCALAPPDATA"), "epiworldRcalibrate", "models")
+           ),
+           "Darwin" = c(  # macOS
+             file.path(path.expand("~"), "Library", "Application Support", "epiworldRcalibrate", "models"),
+             file.path("/usr/local/share/epiworldRcalibrate/models")
+           ),
+           "Linux" = c(
+             file.path(path.expand("~"), ".local", "share", "epiworldRcalibrate", "models"),
+             file.path("/usr/local/share/epiworldRcalibrate/models"),
+             file.path("/opt/epiworldRcalibrate/models")
+           ),
+           # Default fallback for unknown systems
+           character(0)
+    )
+  )
+
+  # Remove empty strings and NULL entries
+  search_paths <- search_paths[nzchar(search_paths) & !is.null(search_paths)]
+
+  # Find the first existing directory
+  for (path in search_paths) {
+    if (dir.exists(path)) {
+      # Verify it contains required files
+      required_files <- c("model4_bilstm.pt", "scaler_additional.pkl", "scaler_targets.pkl")
+      if (all(file.exists(file.path(path, required_files)))) {
+        return(normalizePath(path, mustWork = TRUE))
+      }
+    }
+  }
+
+  # If nothing found, provide helpful error message
+  stop(sprintf(
+    "Could not locate model directory. Searched the following locations:\n%s\n\n%s",
+    paste(sprintf("  - %s", search_paths), collapse = "\n"),
+    "Please either:\n  1. Install the package properly with model files\n  2. Provide model_dir parameter explicitly\n  3. Place model files in one of the searched locations"
+  ))
+}
+
 # ---- Private: loader ----
 .ensure_bilstm_ready <- function(model_dir = NULL, force_reload = FALSE) {
   # Make sure Python is available
@@ -115,37 +186,27 @@ def cleanup():
     stop("Python is not available to reticulate. Configure reticulate::use_python()/use_virtualenv()/use_condaenv() first.")
   }
 
-  # Resolve model_dir
-  if (is.null(model_dir)) {
-    # Prefer an installed package path (inst/models) if present
-    pkg_dir <- system.file("models", package = "epiworldRcalibrate")
-    if (nzchar(pkg_dir)) {
-      model_dir <- pkg_dir
-    } else {
-      # Fallback to your prior default (adjust if needed)
-      model_dir <- "~/Desktop/epiworldRcalibrate_fixed/epiworldRcalibrate/inst/models"
-    }
-  }
+  # Resolve model_dir using robust cross-platform logic
+  resolved_model_dir <- .resolve_model_dir(model_dir)
 
   # Short-circuit if already loaded for the same dir (and not forcing reload)
-  if (.bilstm_env$model_loaded && !force_reload && identical(.bilstm_env$model_dir, model_dir)) {
+  if (.bilstm_env$model_loaded && !force_reload && identical(.bilstm_env$model_dir, resolved_model_dir)) {
     return(invisible(TRUE))
   }
 
-  # Validate directory + files
-  if (!dir.exists(path.expand(model_dir))) {
-    stop(sprintf("Model directory does not exist: %s", model_dir))
-  }
-  base_dir <- normalizePath(path.expand(model_dir), mustWork = TRUE)
-  model_path      <- file.path(base_dir, "model4_bilstm.pt")
-  scaler_add_path <- file.path(base_dir, "scaler_additional.pkl")
-  scaler_tgt_path <- file.path(base_dir, "scaler_targets.pkl")
-  scaler_inc_path <- file.path(base_dir, "scaler_incidence.pkl")
+  # Build file paths using file.path for cross-platform compatibility
+  model_path      <- file.path(resolved_model_dir, "model4_bilstm.pt")
+  scaler_add_path <- file.path(resolved_model_dir, "scaler_additional.pkl")
+  scaler_tgt_path <- file.path(resolved_model_dir, "scaler_targets.pkl")
+  scaler_inc_path <- file.path(resolved_model_dir, "scaler_incidence.pkl")
 
+  # Verify required files exist
   required <- c(model_path, scaler_add_path, scaler_tgt_path)
   missing  <- required[!file.exists(required)]
   if (length(missing) > 0) {
-    stop(sprintf("Required model files not found: %s", paste(missing, collapse = ", ")))
+    stop(sprintf("Required model files not found:\n%s\n\nIn directory: %s",
+                 paste(sprintf("  - %s", basename(missing)), collapse = "\n"),
+                 resolved_model_dir))
   }
 
   # Load Python code
@@ -154,7 +215,7 @@ def cleanup():
     error = function(e) stop(sprintf("Failed to initialize Python code: %s", e$message))
   )
 
-  # Load weights + scalers
+  # Load weights + scalers with normalized paths
   tryCatch({
     reticulate::py$load_model(
       model_path      = normalizePath(model_path, mustWork = TRUE),
@@ -163,23 +224,26 @@ def cleanup():
       scaler_inc_path = if (file.exists(scaler_inc_path)) normalizePath(scaler_inc_path, mustWork = TRUE) else NULL
     )
     .bilstm_env$model_loaded <- TRUE
-    .bilstm_env$model_dir    <- model_dir
+    .bilstm_env$model_dir    <- resolved_model_dir
+    message(sprintf("BiLSTM model loaded successfully from: %s", resolved_model_dir))
     invisible(TRUE)
   }, error = function(e) {
     .bilstm_env$model_loaded <- FALSE
     .bilstm_env$model_dir    <- NULL
-    stop(sprintf("Failed to load model: %s", e$message))
+    stop(sprintf("Failed to load model from %s: %s", resolved_model_dir, e$message))
   })
 }
 
 #' Calibrate SIR parameters using a pre-trained BiLSTM
 #'
 #' Lazily initializes the Python model on first use (unless `auto_init = FALSE`).
+#' The model directory is automatically detected across platforms.
 #'
 #' @param time_series Numeric vector of length 61: incidence data
 #' @param n Numeric (>0). Population size
 #' @param recov Numeric (>0). Recovery rate
-#' @param model_dir Optional path to model/scaler files (see Details)
+#' @param model_dir Optional path to model/scaler files. If NULL, will search
+#'   standard locations across platforms.
 #' @param auto_init Logical (default TRUE). If TRUE, auto-loads the model on first call
 #' @return Named numeric vector: `c(ptran, crate, R0)`
 #' @export
@@ -187,6 +251,10 @@ def cleanup():
 #' \dontrun{
 #' # One-liner: auto-initializes, then predicts
 #' res <- calibrate_sir_bilstm(abs(rnorm(61, 100, 20)), n = 5000, recov = 0.1)
+#'
+#' # Specify custom model directory
+#' res <- calibrate_sir_bilstm(time_series, n = 5000, recov = 0.1,
+#'                            model_dir = "/path/to/my/models")
 #' }
 calibrate_sir_bilstm <- function(time_series, n, recov, model_dir = NULL, auto_init = TRUE) {
   if (auto_init) .ensure_bilstm_ready(model_dir = model_dir)
@@ -212,13 +280,18 @@ calibrate_sir_bilstm <- function(time_series, n, recov, model_dir = NULL, auto_i
 
 #' Initialize BiLSTM Model for SIR Calibration (back-compat)
 #'
-#' @param model_dir Character. Path to directory with model files.
+#' @param model_dir Character. Path to directory with model files. If NULL,
+#'   will search standard locations across platforms.
 #' @param force_reload Logical. Reload even if already loaded (default FALSE).
 #' @return TRUE if model loaded successfully
 #' @export
 #' @examples
 #' \dontrun{
+#' # Auto-detect model location
 #' init_bilstm_model()
+#'
+#' # Use specific directory
+#' init_bilstm_model("/path/to/models")
 #' }
 init_bilstm_model <- function(model_dir = NULL, force_reload = FALSE) {
   .ensure_bilstm_ready(model_dir = model_dir, force_reload = force_reload)
@@ -241,6 +314,13 @@ predict_sir_bilstm <- function(time_series, n, recov) {
     stop("BiLSTM model not loaded. Call init_bilstm_model() or use calibrate_sir_bilstm(..., auto_init = TRUE).")
   }
   calibrate_sir_bilstm(time_series, n, recov, auto_init = FALSE)
+}
+
+#' Get current model directory path
+#' @return Character string with current model directory, or NULL if not loaded
+#' @export
+get_bilstm_model_dir <- function() {
+  .bilstm_env$model_dir
 }
 
 #' Is the BiLSTM model loaded?
@@ -267,4 +347,58 @@ cleanup_bilstm_model <- function() {
     warning(sprintf("Error during cleanup: %s", e$message))
   })
   invisible(NULL)
+}
+
+#' Show searched model directory locations
+#'
+#' Utility function to help debug model loading issues by showing
+#' all the directories that would be searched for model files.
+#'
+#' @return Character vector of searched paths
+#' @export
+show_model_search_paths <- function() {
+  search_paths <- c(
+    system.file("models", package = "epiworldRcalibrate"),
+    system.file("extdata", "models", package = "epiworldRcalibrate"),
+    file.path(getwd(), "models"),
+    file.path(getwd(), "inst", "models"),
+    file.path(path.expand("~"), "epiworldRcalibrate_models"),
+    switch(Sys.info()["sysname"],
+           "Windows" = c(
+             file.path(Sys.getenv("USERPROFILE"), "Documents", "R", "epiworldRcalibrate", "models"),
+             file.path(Sys.getenv("LOCALAPPDATA"), "epiworldRcalibrate", "models")
+           ),
+           "Darwin" = c(
+             file.path(path.expand("~"), "Library", "Application Support", "epiworldRcalibrate", "models"),
+             file.path("/usr/local/share/epiworldRcalibrate/models")
+           ),
+           "Linux" = c(
+             file.path(path.expand("~"), ".local", "share", "epiworldRcalibrate", "models"),
+             file.path("/usr/local/share/epiworldRcalibrate/models"),
+             file.path("/opt/epiworldRcalibrate/models")
+           ),
+           character(0)
+    )
+  )
+
+  # Clean up and show status
+  search_paths <- search_paths[nzchar(search_paths) & !is.null(search_paths)]
+
+  cat("Model directory search paths (in order of preference):\n")
+  for (i in seq_along(search_paths)) {
+    path <- search_paths[i]
+    exists_status <- if (dir.exists(path)) "EXISTS" else "not found"
+
+    if (dir.exists(path)) {
+      required_files <- c("model4_bilstm.pt", "scaler_additional.pkl", "scaler_targets.pkl")
+      has_files <- all(file.exists(file.path(path, required_files)))
+      file_status <- if (has_files) "(has required files)" else "(missing some files)"
+    } else {
+      file_status <- ""
+    }
+
+    cat(sprintf("%2d. %s [%s] %s\n", i, path, exists_status, file_status))
+  }
+
+  invisible(search_paths)
 }
