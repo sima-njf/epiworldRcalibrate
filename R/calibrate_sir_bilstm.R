@@ -1,73 +1,24 @@
+#' BiLSTM-backed SIR calibration helpers
+#'
+#' Entry point: [calibrate_sir_bilstm()], which lazily initializes the Python model
+#' the first time you call it. Back-compat wrappers [init_bilstm_model()] and
+#' [predict_sir_bilstm()] are exported so existing code continues to work.
+#'
+#' Required files in `model_dir`:
+#' - model4_bilstm.pt
+#' - scaler_additional.pkl
+#' - scaler_targets.pkl
+#' - (optional) scaler_incidence.pkl
+#'
 #' @keywords internal
-"_PACKAGE"
 
-library(reticulate)
-
-# Global environment tracking
-.bilstm_env <- new.env()
+# ---- Private: process-scoped cache ----
+.bilstm_env <- new.env(parent = emptyenv())
 .bilstm_env$model_loaded <- FALSE
-.bilstm_env$model_dir <- NULL
+.bilstm_env$model_dir    <- NULL
 
-#' Initialize BiLSTM Model for SIR Calibration
-#'
-#' @param model_dir Character. Path to directory containing model files.
-#'                  If NULL, uses default "~/epiworldRcalibrate/epiworldRcalibrate/inst/models/LSTM_model"
-#' @param force_reload Logical. Force reload even if model already loaded (default: FALSE)
-#'
-#' @details
-#' This function loads the BiLSTM model and scalers into memory once. Call this before
-#' using \code{\link{predict_sir_bilstm}} for optimal performance. The model stays loaded until
-#' R session ends or \code{\link{cleanup_bilstm_model}} is called.
-#'
-#' Required files in \code{model_dir}:
-#' \itemize{
-#'   \item model4_bilstm.pt - PyTorch model weights
-#'   \item scaler_additional.pkl - Scaler for additional inputs
-#'   \item scaler_targets.pkl - Scaler for target outputs
-#'   \item scaler_incidence.pkl - Scaler for incidence data
-#' }
-#'
-#' @return Logical. TRUE if model loaded successfully
-#' @export
-#'
-#' @examples
-#' \dontrun{
-#' # Initialize model (do this once)
-#' init_bilstm_model()
-#'
-#' # Now make fast predictions
-#' for(i in 1:100) {
-#'   params <- predict_sir_bilstm(incidence_data, n = 5000, recov = 0.1)
-#' }
-#' }
-init_bilstm_model <- function(model_dir = NULL, force_reload = FALSE) {
-
-  if (is.null(model_dir)) {
-    model_dir <- "~/Desktop/epiworldRcalibrate_fixed/epiworldRcalibrate/inst/models"
-  }
-
-  if (.bilstm_env$model_loaded && !force_reload && identical(.bilstm_env$model_dir, model_dir)) {
-    message("BiLSTM model already loaded. Use force_reload=TRUE to reload.")
-    return(TRUE)
-  }
-
-  if (!dir.exists(model_dir)) {
-    stop(paste("Model directory does not exist:", model_dir))
-  }
-
-  base_dir <- normalizePath(model_dir)
-  model_path <- normalizePath(file.path(base_dir, "model4_bilstm.pt"))
-  scaler_add_path <- normalizePath(file.path(base_dir, "scaler_additional.pkl"))
-  scaler_tgt_path <- normalizePath(file.path(base_dir, "scaler_targets.pkl"))
-  scaler_inc_path <- normalizePath(file.path(base_dir, "scaler_incidence.pkl"))
-
-  required_files <- c(model_path, scaler_add_path, scaler_tgt_path)
-  missing_files <- required_files[!file.exists(required_files)]
-  if (length(missing_files) > 0) {
-    stop(paste("Required model files not found:", paste(missing_files, collapse = ", ")))
-  }
-
-  python_code <- "
+# ---- Private: bundled Python implementation (single load into reticulate) ----
+.bilstm_env$python_code <- "
 import torch
 import torch.nn as nn
 import joblib
@@ -79,14 +30,13 @@ _scaler_add = None
 _scaler_tgt = None
 _scaler_inc = None
 _device = torch.device('cpu')
-INCIDENCE_MIN = 0
-INCIDENCE_MAX = 10000
+INCIDENCE_MAX = 10000.0
 
 class BiLSTMModel(nn.Module):
     def __init__(self, input_dim, hidden_dim, num_layers, additional_dim, output_dim, dropout):
         super().__init__()
         self.bilstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True,
-                             dropout=dropout, bidirectional=True)
+                              dropout=dropout, bidirectional=True)
         self.fc1 = nn.Linear(2 * hidden_dim + additional_dim, 64)
         self.fc2 = nn.Linear(64, output_dim)
         self.sigmoid = nn.Sigmoid()
@@ -104,28 +54,28 @@ class BiLSTMModel(nn.Module):
             self.softplus(out[:, 2])
         ], dim=1)
 
-def create_fixed_incidence_scaler(shape):
-    scaler = MinMaxScaler(feature_range=(0, 1))
-    scaler.data_min_ = np.zeros(shape)
-    scaler.data_max_ = np.ones(shape) * INCIDENCE_MAX
-    scaler.data_range_ = scaler.data_max_ - scaler.data_min_
-    scaler.scale_ = 1.0 / scaler.data_range_
-    scaler.min_ = 0 - scaler.data_min_ * scaler.scale_
+def _fit_fixed_incidence_scaler(n_features):
+    # Fit a MinMaxScaler on synthetic [0, INCIDENCE_MAX] bounds so .transform works robustly
+    scaler = MinMaxScaler(feature_range=(0.0, 1.0))
+    fake = np.vstack([np.zeros(n_features), np.ones(n_features) * INCIDENCE_MAX])
+    scaler.fit(fake)
     return scaler
 
 def load_model(model_path, scaler_add_path, scaler_tgt_path, scaler_inc_path=None):
     global _model, _scaler_add, _scaler_tgt, _scaler_inc
     _scaler_add = joblib.load(scaler_add_path)
     _scaler_tgt = joblib.load(scaler_tgt_path)
+
     if scaler_inc_path:
         try:
             _scaler_inc = joblib.load(scaler_inc_path)
-        except:
+        except Exception:
             _scaler_inc = None
     else:
         _scaler_inc = None
+
     _model = BiLSTMModel(input_dim=1, hidden_dim=160, num_layers=3,
-                        additional_dim=2, output_dim=3, dropout=0.5)
+                         additional_dim=2, output_dim=3, dropout=0.5)
     state = torch.load(model_path, map_location=_device)
     _model.load_state_dict(state)
     _model.to(_device).eval()
@@ -133,15 +83,21 @@ def load_model(model_path, scaler_add_path, scaler_tgt_path, scaler_inc_path=Non
 def predict(seq, additional_pair):
     global _scaler_inc
     x = np.asarray(seq, dtype=np.float32).reshape(1, -1, 1)
+
     if _scaler_inc is None:
-        _scaler_inc = create_fixed_incidence_scaler(x.shape[1])
+        _scaler_inc = _fit_fixed_incidence_scaler(x.shape[1])
+
     x_scaled = _scaler_inc.transform(x.reshape(1, -1)).reshape(1, -1, 1)
+
     add_np = np.array([additional_pair], dtype=np.float32)
     add_scaled = _scaler_add.transform(add_np)
+
     x_t = torch.tensor(x_scaled, dtype=torch.float32, device=_device)
     add_t = torch.tensor(add_scaled, dtype=torch.float32, device=_device)
+
     with torch.no_grad():
         out = _model(x_t, add_t).cpu().numpy()
+
     return _scaler_tgt.inverse_transform(out)[0].tolist()
 
 def cleanup():
@@ -152,134 +108,164 @@ def cleanup():
     _scaler_inc = None
 "
 
-  tryCatch({
-    py_run_string(python_code)
-  }, error = function(e) {
-    stop(paste("Failed to initialize Python environment:", e$message))
-  })
+# ---- Private: loader ----
+.ensure_bilstm_ready <- function(model_dir = NULL, force_reload = FALSE) {
+  # Make sure Python is available
+  if (!reticulate::py_available(initialize = TRUE)) {
+    stop("Python is not available to reticulate. Configure reticulate::use_python()/use_virtualenv()/use_condaenv() first.")
+  }
 
+  # Resolve model_dir
+  if (is.null(model_dir)) {
+    # Prefer an installed package path (inst/models) if present
+    pkg_dir <- system.file("models", package = "epiworldRcalibrate")
+    if (nzchar(pkg_dir)) {
+      model_dir <- pkg_dir
+    } else {
+      # Fallback to your prior default (adjust if needed)
+      model_dir <- "~/Desktop/epiworldRcalibrate_fixed/epiworldRcalibrate/inst/models"
+    }
+  }
+
+  # Short-circuit if already loaded for the same dir (and not forcing reload)
+  if (.bilstm_env$model_loaded && !force_reload && identical(.bilstm_env$model_dir, model_dir)) {
+    return(invisible(TRUE))
+  }
+
+  # Validate directory + files
+  if (!dir.exists(path.expand(model_dir))) {
+    stop(sprintf("Model directory does not exist: %s", model_dir))
+  }
+  base_dir <- normalizePath(path.expand(model_dir), mustWork = TRUE)
+  model_path      <- file.path(base_dir, "model4_bilstm.pt")
+  scaler_add_path <- file.path(base_dir, "scaler_additional.pkl")
+  scaler_tgt_path <- file.path(base_dir, "scaler_targets.pkl")
+  scaler_inc_path <- file.path(base_dir, "scaler_incidence.pkl")
+
+  required <- c(model_path, scaler_add_path, scaler_tgt_path)
+  missing  <- required[!file.exists(required)]
+  if (length(missing) > 0) {
+    stop(sprintf("Required model files not found: %s", paste(missing, collapse = ", ")))
+  }
+
+  # Load Python code
+  tryCatch(
+    reticulate::py_run_string(.bilstm_env$python_code),
+    error = function(e) stop(sprintf("Failed to initialize Python code: %s", e$message))
+  )
+
+  # Load weights + scalers
   tryCatch({
-    py$load_model(
-      model_path = model_path,
-      scaler_add_path = scaler_add_path,
-      scaler_tgt_path = scaler_tgt_path,
-      scaler_inc_path = if(file.exists(scaler_inc_path)) scaler_inc_path else NULL
+    reticulate::py$load_model(
+      model_path      = normalizePath(model_path, mustWork = TRUE),
+      scaler_add_path = normalizePath(scaler_add_path, mustWork = TRUE),
+      scaler_tgt_path = normalizePath(scaler_tgt_path, mustWork = TRUE),
+      scaler_inc_path = if (file.exists(scaler_inc_path)) normalizePath(scaler_inc_path, mustWork = TRUE) else NULL
     )
     .bilstm_env$model_loaded <- TRUE
-    .bilstm_env$model_dir <- model_dir
-    message("BiLSTM model loaded successfully!")
-    return(TRUE)
+    .bilstm_env$model_dir    <- model_dir
+    invisible(TRUE)
   }, error = function(e) {
     .bilstm_env$model_loaded <- FALSE
-    stop(paste("Failed to load model:", e$message))
+    .bilstm_env$model_dir    <- NULL
+    stop(sprintf("Failed to load model: %s", e$message))
   })
 }
 
-#' Fast SIR Parameter Prediction using BiLSTM
+#' Calibrate SIR parameters using a pre-trained BiLSTM
 #'
-#' @param time_series Numeric vector of length 61 containing incidence data
-#' @param n Numeric. Population size
-#' @param recov Numeric. Recovery rate
+#' Lazily initializes the Python model on first use (unless `auto_init = FALSE`).
 #'
-#' @details
-#' This function makes fast predictions using a pre-loaded BiLSTM model.
-#' Call \code{\link{init_bilstm_model}} first to load the model into memory.
-#'
-#' @return Named numeric vector with components:
-#' \describe{
-#'   \item{ptran}{Transmission probability}
-#'   \item{crate}{Contact rate}
-#'   \item{R0}{Basic reproduction number}
-#' }
-#'
+#' @param time_series Numeric vector of length 61: incidence data
+#' @param n Numeric (>0). Population size
+#' @param recov Numeric (>0). Recovery rate
+#' @param model_dir Optional path to model/scaler files (see Details)
+#' @param auto_init Logical (default TRUE). If TRUE, auto-loads the model on first call
+#' @return Named numeric vector: `c(ptran, crate, R0)`
 #' @export
+#' @examples
+#' \dontrun{
+#' # One-liner: auto-initializes, then predicts
+#' res <- calibrate_sir_bilstm(abs(rnorm(61, 100, 20)), n = 5000, recov = 0.1)
+#' }
+calibrate_sir_bilstm <- function(time_series, n, recov, model_dir = NULL, auto_init = TRUE) {
+  if (auto_init) .ensure_bilstm_ready(model_dir = model_dir)
+
+  if (!isTRUE(.bilstm_env$model_loaded)) {
+    stop("BiLSTM model not loaded. Call calibrate_sir_bilstm(..., auto_init = TRUE) or init_bilstm_model() first.")
+  }
+
+  stopifnot(is.numeric(time_series), length(time_series) == 61,
+            is.numeric(n), n > 0,
+            is.numeric(recov), recov > 0)
+
+  ts_num <- as.numeric(time_series)
+
+  out <- tryCatch({
+    res <- reticulate::py$predict(ts_num, list(n, recov))
+    names(res) <- c("ptran", "crate", "R0")
+    res
+  }, error = function(e) stop(sprintf("Prediction failed: %s", e$message)))
+
+  return(out)
+}
+
+#' Initialize BiLSTM Model for SIR Calibration (back-compat)
 #'
+#' @param model_dir Character. Path to directory with model files.
+#' @param force_reload Logical. Reload even if already loaded (default FALSE).
+#' @return TRUE if model loaded successfully
+#' @export
 #' @examples
 #' \dontrun{
 #' init_bilstm_model()
-#' incidence <- abs(rnorm(61, mean = 100, sd = 20))
-#' predict_sir_bilstm(incidence, n = 5000, recov = 0.1)
 #' }
-predict_sir_bilstm <- function(time_series, n, recov) {
-  if (!.bilstm_env$model_loaded) {
-    stop("BiLSTM model not loaded. Call init_bilstm_model() first.")
-  }
-  stopifnot(
-    length(time_series) == 61,
-    is.numeric(n),
-    is.numeric(recov),
-    n > 0,
-    recov > 0
-  )
-  tryCatch({
-    time_series <- as.numeric(time_series)
-    out <- py$predict(time_series, list(n, recov))
-    names(out) <- c("ptran", "crate", "R0")
-    return(out)
-  }, error = function(e) {
-    stop(paste("Prediction failed:", e$message))
-  })
+init_bilstm_model <- function(model_dir = NULL, force_reload = FALSE) {
+  .ensure_bilstm_ready(model_dir = model_dir, force_reload = force_reload)
+  isTRUE(.bilstm_env$model_loaded)
 }
 
-#' Check if BiLSTM Model is Loaded
+#' Fast SIR parameter prediction (back-compat)
 #'
-#' @return Logical indicating if the model is currently loaded
+#' @param time_series Numeric vector of length 61 (incidence)
+#' @param n Numeric (>0). Population size
+#' @param recov Numeric (>0). Recovery rate
+#' @return Named numeric vector `c(ptran, crate, R0)`
 #' @export
-is_bilstm_loaded <- function() {
-  return(.bilstm_env$model_loaded)
-}
-
-#' Clean up BiLSTM Model
-#'
-#' @description
-#' Frees memory by removing the loaded BiLSTM model and associated scalers.
-#' Useful in long-running sessions where the model is no longer needed.
-#'
-#' @return None. Side-effect: model environment is cleared.
-#' @export
-cleanup_bilstm_model <- function() {
-  if (.bilstm_env$model_loaded) {
-    tryCatch({
-      py$cleanup()
-      .bilstm_env$model_loaded <- FALSE
-      .bilstm_env$model_dir <- NULL
-      message("BiLSTM model cleaned up successfully.")
-    }, error = function(e) {
-      warning(paste("Error during cleanup:", e$message))
-    })
-  } else {
-    message("No BiLSTM model loaded to clean up.")
-  }
-}
-
-#' Calibrate SIR Model Parameters using BiLSTM
-#'
-#' @param time_series Numeric vector of length 61 containing incidence data
-#' @param n Numeric. Population size
-#' @param recov Numeric. Recovery rate
-#' @param model_dir Character. Optional. Path to model directory (used only if model is not already loaded)
-#' @param auto_init Logical. If TRUE (default), automatically initializes the model if not yet loaded
-#'
-#' @details
-#' This is a convenient wrapper that optionally initializes the model and predicts parameters
-#' in a single call.
-#'
-#' @return Named numeric vector with components:
-#' \describe{
-#'   \item{ptran}{Transmission probability}
-#'   \item{crate}{Contact rate}
-#'   \item{R0}{Basic reproduction number}
-#' }
-#'
-#' @export
-#'
 #' @examples
 #' \dontrun{
-#' calibrate_sir_bilstm(time_series = abs(rnorm(61)), n = 5000, recov = 0.1)
+#' init_bilstm_model()
+#' predict_sir_bilstm(abs(rnorm(61, 100, 20)), n = 5000, recov = 0.1)
 #' }
-calibrate_sir_bilstm <- function(time_series, n, recov, model_dir = NULL, auto_init = TRUE) {
-  if (!.bilstm_env$model_loaded && auto_init) {
-    init_bilstm_model(model_dir = model_dir)
+predict_sir_bilstm <- function(time_series, n, recov) {
+  if (!isTRUE(.bilstm_env$model_loaded)) {
+    stop("BiLSTM model not loaded. Call init_bilstm_model() or use calibrate_sir_bilstm(..., auto_init = TRUE).")
   }
-  return(predict_sir_bilstm(time_series, n, recov))
+  calibrate_sir_bilstm(time_series, n, recov, auto_init = FALSE)
+}
+
+#' Is the BiLSTM model loaded?
+#' @return Logical
+#' @export
+is_bilstm_loaded <- function() {
+  isTRUE(.bilstm_env$model_loaded)
+}
+
+#' Free Python-side model and scalers
+#' @return NULL (invisible)
+#' @export
+cleanup_bilstm_model <- function() {
+  if (!isTRUE(.bilstm_env$model_loaded)) {
+    message("No BiLSTM model loaded to clean up.")
+    return(invisible(NULL))
+  }
+  tryCatch({
+    reticulate::py$cleanup()
+    .bilstm_env$model_loaded <- FALSE
+    .bilstm_env$model_dir    <- NULL
+    message("BiLSTM model cleaned up successfully.")
+  }, error = function(e) {
+    warning(sprintf("Error during cleanup: %s", e$message))
+  })
+  invisible(NULL)
 }
