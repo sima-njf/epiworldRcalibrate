@@ -232,12 +232,11 @@ init_bilstm_model <- function(model_dir = NULL, force_reload = FALSE) {
 #' @param recov Numeric (>0). Recovery rate
 #' @return Named numeric vector `c(ptran, crate, R0)`
 #' @export
-#' @examples
-#' \dontrun{
-#' init_bilstm_model()
-#' predict_sir_bilstm(abs(rnorm(61, 100, 20)), n = 5000, recov = 0.1)
-#' }
 predict_sir_bilstm <- function(time_series, n, recov) {
+  # Try to auto-init if not loaded (uses default model_dir resolution)
+  if (!isTRUE(.bilstm_env$model_loaded)) {
+    try(.ensure_bilstm_ready(model_dir = NULL, force_reload = FALSE), silent = TRUE)
+  }
   if (!isTRUE(.bilstm_env$model_loaded)) {
     stop("BiLSTM model not loaded. Call init_bilstm_model() or use calibrate_sir_bilstm(..., auto_init = TRUE).")
   }
