@@ -79,7 +79,10 @@ Next, we use the `epiworldRcalibrate` package to load a pretrained BiLSTM model 
 # }
 
 # Use vignette-safe prediction that handles missing models gracefully
-lstm_predictions <- vignette_safe_predict(incidence_ts, n = true_params$n, recov = true_params$recovery_rate)
+lstm_predictions <- vignette_safe_predict(
+  incidence_ts, n = true_params$n,
+  recov = true_params$recovery_rate
+)
 
 lstm_params <- data.frame(
   n = true_params$n,

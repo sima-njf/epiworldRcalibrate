@@ -433,6 +433,10 @@ vignette_safe_predict <- function(time_series, n, recov, prefer_mock = TRUE) {
   calibrate_sir_bilstm(time_series, n, recov, fallback_method = fallback)
 }
 
+#' This function is missing. Adding a placeholder
+#' @noRd
+.is_vignette_mode <- function() TRUE
+
 #' Check if BiLSTM model files are available
 #' @param model_dir Optional path to model directory
 #' @return Logical indicating if model files exist
