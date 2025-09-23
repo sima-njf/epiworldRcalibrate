@@ -1,0 +1,17 @@
+FROM rocker/tidyverse:4.5.1
+
+# RUN \
+#   echo 'options(repos=c(CRAN="https://packagemanager.posit.co/cran/__linux__/bookworm/latest"))' >> ~/.Rprofile && \
+#   Rscript --vanilla -e 'getOption("repos")'
+
+
+RUN install2.r --error languageserver && \
+installGithub.r nx10/httpgd
+
+RUN apt-get update && apt-get install --no-install-recommends -y valgrind gdb \
+libglpk-dev
+
+# Adding R packages
+RUN install2.r --error epiworldR data.table reticulate patchwork keras3 tensorflow
+
+CMD ["bash"]
