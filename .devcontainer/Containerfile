@@ -4,6 +4,7 @@ FROM rocker/tidyverse:4.5.1
 #   echo 'options(repos=c(CRAN="https://packagemanager.posit.co/cran/__linux__/bookworm/latest"))' >> ~/.Rprofile && \
 #   Rscript --vanilla -e 'getOption("repos")'
 
+RUN install2.r --error devtools roxygen2 quarto testthat tinytest
 
 RUN install2.r --error languageserver && \
 installGithub.r nx10/httpgd
