@@ -2,36 +2,20 @@
 % Please edit documentation in R/calibrate_sir_bilstm.R
 \name{predict_sir_bilstm}
 \alias{predict_sir_bilstm}
-\title{Fast SIR Parameter Prediction using BiLSTM}
+\title{Fast SIR parameter prediction (back-compat)}
 \usage{
 predict_sir_bilstm(time_series, n, recov)
 }
 \arguments{
-\item{time_series}{Numeric vector of length 61 containing incidence data}
+\item{time_series}{Numeric vector of length 61 (incidence)}
 
-\item{n}{Numeric. Population size}
+\item{n}{Numeric (>0). Population size}
 
-\item{recov}{Numeric. Recovery rate}
+\item{recov}{Numeric (>0). Recovery rate}
 }
 \value{
-Named numeric vector with components:
-\describe{
-\item{ptran}{Transmission probability}
-\item{crate}{Contact rate}
-\item{R0}{Basic reproduction number}
-}
+Named numeric vector \code{c(ptran, crate, R0)}
 }
 \description{
-Fast SIR Parameter Prediction using BiLSTM
-}
-\details{
-This function makes fast predictions using a pre-loaded BiLSTM model.
-Call \code{\link{init_bilstm_model}} first to load the model into memory.
-}
-\examples{
-\dontrun{
-init_bilstm_model()
-incidence <- abs(rnorm(61, mean = 100, sd = 20))
-predict_sir_bilstm(incidence, n = 5000, recov = 0.1)
-}
+Fast SIR parameter prediction (back-compat)
 }

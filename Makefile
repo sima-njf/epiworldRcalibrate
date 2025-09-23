@@ -3,7 +3,7 @@ VERSION:=$(shell Rscript -e 'x<-readLines("DESCRIPTION");cat(gsub(".+[:]\\s*", "
 PKGNAME:=$(shell Rscript -e 'x<-readLines("DESCRIPTION");cat(gsub(".+[:]\\s*", "", x[grepl("^Package", x)]))')
 
 # Mark phony targets
-.PHONY: build install check clean man test document vignettes style lint debug profile
+.PHONY: build install check clean man test docs vignettes style lint debug profile
 
 # Main build target
 ${PKGNAME}_${VERSION}.tar.gz: R/* inst/* man/* vignettes/*
@@ -28,10 +28,10 @@ check-quick: build
 
 # Generate documentation
 man: R/*
-	Rscript --vanilla -e 'roxygen2::roxygenize()'
+	Rscript --vanilla -e 'devtools::document()'
 
 # Alternative documentation command
-document: man
+docs: man
 
 # Run tests
 test:

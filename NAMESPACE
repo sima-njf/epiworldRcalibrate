@@ -2,6 +2,10 @@
 
 export(calibrate_sir_bilstm)
 export(cleanup_bilstm_model)
+export(get_bilstm_model_dir)
+export(has_bilstm_models)
 export(init_bilstm_model)
 export(is_bilstm_loaded)
 export(predict_sir_bilstm)
+export(show_model_search_paths)
+export(vignette_safe_predict)

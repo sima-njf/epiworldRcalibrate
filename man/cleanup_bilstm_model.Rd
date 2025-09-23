@@ -2,14 +2,13 @@
 % Please edit documentation in R/calibrate_sir_bilstm.R
 \name{cleanup_bilstm_model}
 \alias{cleanup_bilstm_model}
-\title{Clean up BiLSTM Model}
+\title{Free Python-side model and scalers}
 \usage{
 cleanup_bilstm_model()
 }
 \value{
-None. Side-effect: model environment is cleared.
+NULL (invisible)
 }
 \description{
-Frees memory by removing the loaded BiLSTM model and associated scalers.
-Useful in long-running sessions where the model is no longer needed.
+Free Python-side model and scalers
 }

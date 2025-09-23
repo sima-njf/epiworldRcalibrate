@@ -2,38 +2,36 @@
 % Please edit documentation in R/calibrate_sir_bilstm.R
 \name{calibrate_sir_bilstm}
 \alias{calibrate_sir_bilstm}
-\title{Calibrate SIR Model Parameters using BiLSTM}
+\title{Calibrate SIR parameters using a pre-trained BiLSTM}
 \usage{
 calibrate_sir_bilstm(time_series, n, recov, model_dir = NULL, auto_init = TRUE)
 }
 \arguments{
-\item{time_series}{Numeric vector of length 61 containing incidence data}
+\item{time_series}{Numeric vector of length 61: incidence data}
 
-\item{n}{Numeric. Population size}
+\item{n}{Numeric (>0). Population size}
 
-\item{recov}{Numeric. Recovery rate}
+\item{recov}{Numeric (>0). Recovery rate}
 
-\item{model_dir}{Character. Optional. Path to model directory (used only if model is not already loaded)}
+\item{model_dir}{Optional path to model/scaler files. If NULL, will search
+standard locations across platforms.}
 
-\item{auto_init}{Logical. If TRUE (default), automatically initializes the model if not yet loaded}
+\item{auto_init}{Logical (default TRUE). If TRUE, auto-loads the model on first call}
 }
 \value{
-Named numeric vector with components:
-\describe{
-\item{ptran}{Transmission probability}
-\item{crate}{Contact rate}
-\item{R0}{Basic reproduction number}
-}
+Named numeric vector: \code{c(ptran, crate, R0)}
 }
 \description{
-Calibrate SIR Model Parameters using BiLSTM
-}
-\details{
-This is a convenient wrapper that optionally initializes the model and predicts parameters
-in a single call.
+Lazily initializes the Python model on first use (unless \code{auto_init = FALSE}).
+The model directory is automatically detected across platforms.
 }
 \examples{
 \dontrun{
-calibrate_sir_bilstm(time_series = abs(rnorm(61)), n = 5000, recov = 0.1)
+# One-liner: auto-initializes, then predicts
+res <- calibrate_sir_bilstm(abs(rnorm(61, 100, 20)), n = 5000, recov = 0.1)
+
+# Specify custom model directory
+res <- calibrate_sir_bilstm(time_series, n = 5000, recov = 0.1,
+                           model_dir = "/path/to/my/models")
 }
 }

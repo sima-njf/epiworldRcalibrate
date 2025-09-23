@@ -2,13 +2,13 @@
 % Please edit documentation in R/calibrate_sir_bilstm.R
 \name{is_bilstm_loaded}
 \alias{is_bilstm_loaded}
-\title{Check if BiLSTM Model is Loaded}
+\title{Is the BiLSTM model loaded?}
 \usage{
 is_bilstm_loaded()
 }
 \value{
-Logical indicating if the model is currently loaded
+Logical
 }
 \description{
-Check if BiLSTM Model is Loaded
+Is the BiLSTM model loaded?
 }
