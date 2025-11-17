@@ -43,31 +43,103 @@
   </div>
 </nav><div class="container template-home">
 <div class="row">
-  <main id="main" class="col-md-9"><p>📦 epiworldRcalibrate BiLSTM-Based Parameter Calibration for epiworldR</p>
-<p>epiworldRcalibrate provides fast, deep-learning–based calibration of SIR model parameters from epidemic time series generated with epiworldR.</p>
-<p>The package uses a pretrained Bidirectional LSTM (BiLSTM) neural network to estimate:</p>
-<p>Transmission rate (ptran)</p>
-<p>Contact rate (crate)</p>
-<p>Reproduction number (R0)</p>
-<p>Directly from a single incidence curve.</p>
-<p>🌟 Key Features</p>
-<p>One-line calibration using calibrate_sir()</p>
-<p>No Python setup needed — the model initializes internally</p>
-<p>Works seamlessly with epiworldR simulations</p>
-<p>Interpretable preprocessing via show_preprocessing()</p>
-<p>Enables comparison of true vs calibrated SIR dynamics</p>
-<p>🚀 Basic Usage library(epiworldR) library(epiworldRcalibrate)</p>
-<p>model &lt;- ModelSIRCONN(“sim”, n = 8000, prevalence = 0.01, contact_rate = 3, transmission_rate = 0.25, recovery_rate = 0.1) run(model, ndays = 60)</p>
-<p>inc &lt;- plot_incidence(model)[,1]</p>
-<p>calibrate_sir( daily_cases = inc, population_size = 8000, recovery_rate = 0.1 )</p>
-<p>📘 What It’s For</p>
-<p>This package is designed for:</p>
-<p>Epidemic modelers who want automatic SIR parameter recovery</p>
-<p>Researchers comparing mechanistic vs. learned models</p>
-<p>Students learning calibration methods for infectious disease modeling</p>
-<p>Practitioners needing fast approximate inference from incidence data</p>
-<p>🔗 Website</p>
-<p>Full documentation and vignette: ➡️ <a href="https://sima-njf.github.io/epiworldRcalibrate/" class="uri">https://sima-njf.github.io/epiworldRcalibrate/</a></p>
+  <main id="main" class="col-md-9"><p>Here is a <strong>GitHub-ready README.md</strong> — concise, polished, and formatted exactly the way GitHub users expect.</p>
+<hr>
+<div class="section level1">
+<div class="page-header"><h1 id="epiworldrcalibrate">epiworldRcalibrate<a class="anchor" aria-label="anchor" href="#epiworldrcalibrate"></a>
+</h1></div>
+<div class="section level3">
+<h3 id="deep-learning-calibration-for-epiworldr-bilstm-based">
+<strong>Deep Learning Calibration for epiworldR (BiLSTM-Based)</strong><a class="anchor" aria-label="anchor" href="#deep-learning-calibration-for-epiworldr-bilstm-based"></a>
+</h3>
+<p><strong>epiworldRcalibrate</strong> provides fast, data-driven calibration of SIR epidemic parameters using a pretrained <strong>Bidirectional LSTM (BiLSTM)</strong> model. Given a single incidence time series, the package estimates:</p>
+<ul>
+<li>
+<strong>Transmission rate</strong> (<code>ptran</code>)</li>
+<li>
+<strong>Contact rate</strong> (<code>crate</code>)</li>
+<li>
+<strong>Basic reproduction number</strong> (<code>R0</code>)</li>
+</ul>
+<p>The package is fully integrated with <strong>epiworldR</strong> and requires <strong>no external Python setup</strong>.</p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="id_-features">🚀 Features<a class="anchor" aria-label="anchor" href="#id_-features"></a>
+</h2>
+<ul>
+<li>
+<strong>One-line calibration</strong> via <code><a href="reference/calibrate_sir.html">calibrate_sir()</a></code>
+</li>
+<li>
+<strong>Automatic deep learning backend</strong> (initialized on demand)</li>
+<li><strong>Compatible with all epiworldR SIR simulations</strong></li>
+<li>
+<strong>Transparent preprocessing</strong> via <code><a href="reference/show_preprocessing.html">show_preprocessing()</a></code>
+</li>
+<li><strong>Designed for reproducible epidemic modeling workflows</strong></li>
+</ul>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="id_-installation">📦 Installation<a class="anchor" aria-label="anchor" href="#id_-installation"></a>
+</h2>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Install from GitHub</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"sima-njf/epiworldRcalibrate"</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="id_-quick-example">🔧 Quick Example<a class="anchor" aria-label="anchor" href="#id_-quick-example"></a>
+</h2>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/UofUEpiBio/epiworldR" class="external-link">epiworldR</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://sima-njf.github.io/epiworldRcalibrate/">epiworldRcalibrate</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># simulate SIR model</span></span>
+<span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://uofuepibio.github.io/epiworldR/reference/ModelSIRCONN.html" class="external-link">ModelSIRCONN</a></span><span class="op">(</span><span class="st">"sim"</span>, n<span class="op">=</span><span class="fl">8000</span>, prevalence<span class="op">=</span><span class="fl">0.01</span>,</span>
+<span>                  contact_rate<span class="op">=</span><span class="fl">3</span>, transmission_rate<span class="op">=</span><span class="fl">0.25</span>,</span>
+<span>                  recovery_rate<span class="op">=</span><span class="fl">0.1</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://uofuepibio.github.io/epiworldR/reference/epiworld-methods.html" class="external-link">run</a></span><span class="op">(</span><span class="va">m</span>, ndays <span class="op">=</span> <span class="fl">60</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">inc</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://uofuepibio.github.io/epiworldR/reference/epiworld-data.html" class="external-link">plot_incidence</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span><span class="op">[</span>,<span class="fl">1</span><span class="op">]</span></span>
+<span></span>
+<span><span class="co"># one-line calibration</span></span>
+<span><span class="fu"><a href="reference/calibrate_sir.html">calibrate_sir</a></span><span class="op">(</span></span>
+<span>  daily_cases <span class="op">=</span> <span class="va">inc</span>,</span>
+<span>  population_size <span class="op">=</span> <span class="fl">8000</span>,</span>
+<span>  recovery_rate <span class="op">=</span> <span class="fl">0.1</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="id_-what-this-package-is-for">🎯 What This Package Is For<a class="anchor" aria-label="anchor" href="#id_-what-this-package-is-for"></a>
+</h2>
+<p>Use <strong>epiworldRcalibrate</strong> when you want to:</p>
+<ul>
+<li>Extract SIR parameters <strong>directly from simulated incidence curves</strong>
+</li>
+<li>Compare <strong>ground-truth vs. calibrated</strong> dynamics</li>
+<li>Avoid heavy Bayesian/likelihood-based fitting</li>
+<li>Teach or study calibration in infectious disease modeling</li>
+<li>Perform <strong>fast approximate inference</strong> in simulation studies</li>
+</ul>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="id_-documentation">📘 Documentation<a class="anchor" aria-label="anchor" href="#id_-documentation"></a>
+</h2>
+<p>Full website, reference, and vignette: 👉 <strong><a href="https://sima-njf.github.io/epiworldRcalibrate/">https://sima-njf.github.io/epiworldRcalibrate/</a></strong></p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="id_-author">👤 Author<a class="anchor" aria-label="anchor" href="#id_-author"></a>
+</h2>
+<p>Developed by <strong>Sima Najafzadehkhoei</strong> 🔗 <a href="https://github.com/sima-njf" class="external-link">https://github.com/sima-njf</a></p>
+<hr>
+<p>If you want, I can also add CI badges, pkgdown badges, code coverage badges, or a logo.</p>
+</div>
+</div>
 
   </main><aside class="col-md-3"><div class="links">
 <h2 data-toc-skip>Links</h2>

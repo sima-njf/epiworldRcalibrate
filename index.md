@@ -1,55 +1,94 @@
-📦 epiworldRcalibrate BiLSTM-Based Parameter Calibration for epiworldR
+# epiworldRcalibrate
 
-epiworldRcalibrate provides fast, deep-learning–based calibration of SIR
-model parameters from epidemic time series generated with epiworldR.
+Here is a **GitHub-ready README.md** — concise, polished, and formatted
+exactly the way GitHub users expect.
 
-The package uses a pretrained Bidirectional LSTM (BiLSTM) neural network
-to estimate:
+------------------------------------------------------------------------
 
-Transmission rate (ptran)
+### **Deep Learning Calibration for epiworldR (BiLSTM-Based)**
 
-Contact rate (crate)
+**epiworldRcalibrate** provides fast, data-driven calibration of SIR
+epidemic parameters using a pretrained **Bidirectional LSTM (BiLSTM)**
+model. Given a single incidence time series, the package estimates:
 
-Reproduction number (R0)
+- **Transmission rate** (`ptran`)
+- **Contact rate** (`crate`)
+- **Basic reproduction number** (`R0`)
 
-Directly from a single incidence curve.
+The package is fully integrated with **epiworldR** and requires **no
+external Python setup**.
 
-🌟 Key Features
+------------------------------------------------------------------------
 
-One-line calibration using calibrate_sir()
+## 🚀 Features
 
-No Python setup needed — the model initializes internally
+- **One-line calibration** via
+  [`calibrate_sir()`](https://sima-njf.github.io/epiworldRcalibrate/reference/calibrate_sir.md)
+- **Automatic deep learning backend** (initialized on demand)
+- **Compatible with all epiworldR SIR simulations**
+- **Transparent preprocessing** via
+  [`show_preprocessing()`](https://sima-njf.github.io/epiworldRcalibrate/reference/show_preprocessing.md)
+- **Designed for reproducible epidemic modeling workflows**
 
-Works seamlessly with epiworldR simulations
+------------------------------------------------------------------------
 
-Interpretable preprocessing via show_preprocessing()
+## 📦 Installation
 
-Enables comparison of true vs calibrated SIR dynamics
+``` r
+# Install from GitHub
+devtools::install_github("sima-njf/epiworldRcalibrate")
+```
 
-🚀 Basic Usage library(epiworldR) library(epiworldRcalibrate)
+------------------------------------------------------------------------
 
-model \<- ModelSIRCONN(“sim”, n = 8000, prevalence = 0.01, contact_rate
-= 3, transmission_rate = 0.25, recovery_rate = 0.1) run(model, ndays =
-60)
+## 🔧 Quick Example
 
-inc \<- plot_incidence(model)\[,1\]
+``` r
+library(epiworldR)
+library(epiworldRcalibrate)
 
-calibrate_sir( daily_cases = inc, population_size = 8000, recovery_rate
-= 0.1 )
+# simulate SIR model
+m <- ModelSIRCONN("sim", n=8000, prevalence=0.01,
+                  contact_rate=3, transmission_rate=0.25,
+                  recovery_rate=0.1)
+run(m, ndays = 60)
 
-📘 What It’s For
+inc <- plot_incidence(m)[,1]
 
-This package is designed for:
+# one-line calibration
+calibrate_sir(
+  daily_cases = inc,
+  population_size = 8000,
+  recovery_rate = 0.1
+)
+```
 
-Epidemic modelers who want automatic SIR parameter recovery
+------------------------------------------------------------------------
 
-Researchers comparing mechanistic vs. learned models
+## 🎯 What This Package Is For
 
-Students learning calibration methods for infectious disease modeling
+Use **epiworldRcalibrate** when you want to:
 
-Practitioners needing fast approximate inference from incidence data
+- Extract SIR parameters **directly from simulated incidence curves**
+- Compare **ground-truth vs. calibrated** dynamics
+- Avoid heavy Bayesian/likelihood-based fitting
+- Teach or study calibration in infectious disease modeling
+- Perform **fast approximate inference** in simulation studies
 
-🔗 Website
+------------------------------------------------------------------------
 
-Full documentation and vignette: ➡️
-<https://sima-njf.github.io/epiworldRcalibrate/>
+## 📘 Documentation
+
+Full website, reference, and vignette: 👉
+**<https://sima-njf.github.io/epiworldRcalibrate/>**
+
+------------------------------------------------------------------------
+
+## 👤 Author
+
+Developed by **Sima Najafzadehkhoei** 🔗 <https://github.com/sima-njf>
+
+------------------------------------------------------------------------
+
+If you want, I can also add CI badges, pkgdown badges, code coverage
+badges, or a logo.
