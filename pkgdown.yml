@@ -3,7 +3,7 @@ pkgdown: 2.2.0
 pkgdown_sha: ~
 articles:
   calibration_explanation: calibration_explanation.html
-last_built: 2025-11-17T18:52Z
+last_built: 2025-11-17T19:00Z
 urls:
   reference: https://sima-njf.github.io/epiworldRcalibrate/reference
   article: https://sima-njf.github.io/epiworldRcalibrate/articles
