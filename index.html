@@ -43,61 +43,32 @@
   </div>
 </nav><div class="container template-home">
 <div class="row">
-  <main id="main" class="col-md-9"><div class="section level1">
-<div class="page-header"><h1 id="epiworldrcalibrate">epiworldRcalibrate<a class="anchor" aria-label="anchor" href="#epiworldrcalibrate"></a>
-</h1></div>
-<blockquote>
-<p>BiLSTM-based parameter calibration tools for SIR models built on the epiworldR framework.</p>
-</blockquote>
-<hr>
-<div class="section level2">
-<h2 id="id_-overview">📦 Overview<a class="anchor" aria-label="anchor" href="#id_-overview"></a>
-</h2>
-<p><code>epiworldRcalibrate</code> provides fast, deep-learning-based calibration of SIR model parameters using a BiLSTM model implemented in PyTorch and accessed from R via the <code>reticulate</code> package. It allows users to load a trained neural network once and make many fast predictions during large-scale epidemiological simulations.</p>
-<hr>
-</div>
-<div class="section level2">
-<h2 id="id_-features">🔧 Features<a class="anchor" aria-label="anchor" href="#id_-features"></a>
-</h2>
-<ul>
-<li>✅ Persistent BiLSTM model loading using PyTorch<br>
-</li>
-<li>✅ Predicts <code>ptran</code> (transmission probability), <code>crate</code> (contact rate), and <code>R0</code><br>
-</li>
-<li>✅ One-time initialization with support for cleanup<br>
-</li>
-<li>✅ Python–R bridge via <code>reticulate</code><br>
-</li>
-<li>✅ Ready for use in batch simulations or parameter sweeps</li>
-</ul>
-<hr>
-</div>
-<div class="section level2">
-<h2 id="id_-installation">📁 Installation<a class="anchor" aria-label="anchor" href="#id_-installation"></a>
-</h2>
-<p>This package is currently not on CRAN. To install it from GitHub:</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># install.packages("devtools")</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"sima-njf/epiworldRcalibrate"</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://sima-njf.github.io/epiworldRcalibrate/">epiworldRcalibrate</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rstudio.github.io/reticulate/" class="external-link">reticulate</a></span><span class="op">)</span></span>
-<span><span class="co"># Step 1: Load the model (do this once)</span></span>
-<span><span class="fu"><a href="reference/init_bilstm_model.html">init_bilstm_model</a></span><span class="op">(</span><span class="st">"~/Desktop/epiworldRcalibrate_fixed/epiworldRcalibrate/inst/models"</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb3"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="do">## BiLSTM model loaded successfully!</span></span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a></span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="do">## [1] TRUE</span></span></code></pre></div>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Step 2: Predict parameters</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
-<span><span class="va">incidence</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">61</span>, mean <span class="op">=</span> <span class="fl">100</span>, sd <span class="op">=</span> <span class="fl">20</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">params</span> <span class="op">&lt;-</span> <span class="fu">predict_sir_bilstm</span><span class="op">(</span><span class="va">incidence</span>, n <span class="op">=</span> <span class="fl">5000</span>, recov <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">params</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb5"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="do">##      ptran      crate         R0 </span></span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="do">## 0.08728912 3.02057481 2.25915074</span></span></code></pre></div>
-</div>
-</div>
+  <main id="main" class="col-md-9"><p>📦 epiworldRcalibrate BiLSTM-Based Parameter Calibration for epiworldR</p>
+<p>epiworldRcalibrate provides fast, deep-learning–based calibration of SIR model parameters from epidemic time series generated with epiworldR.</p>
+<p>The package uses a pretrained Bidirectional LSTM (BiLSTM) neural network to estimate:</p>
+<p>Transmission rate (ptran)</p>
+<p>Contact rate (crate)</p>
+<p>Reproduction number (R0)</p>
+<p>Directly from a single incidence curve.</p>
+<p>🌟 Key Features</p>
+<p>One-line calibration using calibrate_sir()</p>
+<p>No Python setup needed — the model initializes internally</p>
+<p>Works seamlessly with epiworldR simulations</p>
+<p>Interpretable preprocessing via show_preprocessing()</p>
+<p>Enables comparison of true vs calibrated SIR dynamics</p>
+<p>🚀 Basic Usage library(epiworldR) library(epiworldRcalibrate)</p>
+<p>model &lt;- ModelSIRCONN(“sim”, n = 8000, prevalence = 0.01, contact_rate = 3, transmission_rate = 0.25, recovery_rate = 0.1) run(model, ndays = 60)</p>
+<p>inc &lt;- plot_incidence(model)[,1]</p>
+<p>calibrate_sir( daily_cases = inc, population_size = 8000, recovery_rate = 0.1 )</p>
+<p>📘 What It’s For</p>
+<p>This package is designed for:</p>
+<p>Epidemic modelers who want automatic SIR parameter recovery</p>
+<p>Researchers comparing mechanistic vs. learned models</p>
+<p>Students learning calibration methods for infectious disease modeling</p>
+<p>Practitioners needing fast approximate inference from incidence data</p>
+<p>🔗 Website</p>
+<p>Full documentation and vignette: ➡️ <a href="https://sima-njf.github.io/epiworldRcalibrate/" class="uri">https://sima-njf.github.io/epiworldRcalibrate/</a></p>
+
   </main><aside class="col-md-3"><div class="links">
 <h2 data-toc-skip>Links</h2>
 <ul class="list-unstyled">
