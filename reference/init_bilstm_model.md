@@ -12,12 +12,13 @@ init_bilstm_model(model_dir = NULL, force_reload = FALSE)
 
 - model_dir:
 
-  Optional path to directory with model files.
+  Optional path to model directory. Defaults to the package's bundled
+  model files.
 
 - force_reload:
 
-  Force reload even if already loaded.
+  Logical; reload even if already loaded.
 
 ## Value
 
-(invisible) TRUE on success
+Invisibly returns `TRUE` on success.

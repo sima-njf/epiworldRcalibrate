@@ -4,6 +4,16 @@ Provides functions for calibration using Long-short term memory (LSTM).
 The package includes the pre-treined model which can be used directly on
 your data to do the calibration.
 
+## See also
+
+Useful links:
+
+- <https://sima-njf.github.io/epiworldRcalibrate/>
+
+- <https://github.com/sima-njf/epiworldRcalibrate>
+
+- Report bugs at <https://github.com/sima-njf/epiworldRcalibrate/issues>
+
 ## Author
 
 **Maintainer**: George Vega Yon <g.vegayon@gmail.com>

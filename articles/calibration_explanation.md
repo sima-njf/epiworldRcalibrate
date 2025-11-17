@@ -228,7 +228,7 @@ for (i in seq_len(nrow(params_comparison))) {
 
   saver <- make_saver("total_hist")
   run_multiple(forward_model, ndays = ndays, nsims = n_reps, saver = saver, nthreads = 8)
-  results <- run_multiple_get_results(forward_model, nthreads = 8)
+  results <- run_multiple_get_results(forward_model, nthreads = 2)
 
   sim_data <- results$total_hist %>%
     group_by(date, state) %>%

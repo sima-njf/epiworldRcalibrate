@@ -7,3 +7,7 @@ Check model status
 ``` r
 check_model_status()
 ```
+
+## Value
+
+A list describing model load status and Python config.
