@@ -1,10 +1,5 @@
 # epiworldRcalibrate
 
-Here is a **GitHub-ready README.md** — concise, polished, and formatted
-exactly the way GitHub users expect.
-
-------------------------------------------------------------------------
-
 ### **Deep Learning Calibration for epiworldR (BiLSTM-Based)**
 
 **epiworldRcalibrate** provides fast, data-driven calibration of SIR
@@ -87,8 +82,3 @@ Full website, reference, and vignette: 👉
 ## 👤 Author
 
 Developed by **Sima Najafzadehkhoei** 🔗 <https://github.com/sima-njf>
-
-------------------------------------------------------------------------
-
-If you want, I can also add CI badges, pkgdown badges, code coverage
-badges, or a logo.
