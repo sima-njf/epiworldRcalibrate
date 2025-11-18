@@ -1,6 +1,13 @@
 
 # epiworldRcalibrate
 
+<!-- badges: start -->
+[![ForeSITE Group](https://github.com/EpiForeSITE/software/raw/e82ed88f75e0fe5c0a1a3b38c2b94509f122019c/docs/assets/foresite-software-badge.svg)](https://github.com/EpiForeSITE)
+[![R-CMD-check](https://github.com/sima-njf/epiworldRcalibrate/actions/workflows/r.yml/badge.svg)](https://github.com/sima-njf/epiworldRcalibrate/actions/workflows/r.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/sima-njf/epiworldRcalibrate/blob/main/LICENSE.md)
+[![lifecycle](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+<!-- badges: end -->
+
 ### **Deep Learning Calibration for epiworldR (BiLSTM-Based)**
 
 **epiworldRcalibrate** provides fast, data-driven calibration of SIR epidemic parameters using a pretrained **Bidirectional LSTM (BiLSTM)** model.

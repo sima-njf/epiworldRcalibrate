@@ -1,0 +1,26 @@
+bibentry(
+  bibtype  = "Manual",
+  title    = "epiworldRcalibrate: Calibration with LSTM models",
+  author   = c(
+    person("Sima", "Najafzadehkhoei"),
+    person("George", "Vega Yon"),
+    person("Bernardo", "Modenesi")
+  ),
+  year     = 2025,
+  note     = "R package version 0.1.0",
+  url      = "https://github.com/sima-njf/epiworldRcalibrate"
+)
+
+bibentry(
+  bibtype  = "Article",
+  title    = "BiLSTM Model for Calibration of SIR Epidemic Parameters",
+  author   = c(
+    person("Sima", "Najafzadehkhoei"),
+    person("George", "Vega Yon"),
+    person("Bernardo", "Modenesi")
+  ),
+  year     = 2025,
+  journal  = "arXiv",
+  note     = "2509.07013",
+  url      = "https://arxiv.org/abs/2509.07013"
+)
