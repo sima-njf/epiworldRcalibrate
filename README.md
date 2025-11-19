@@ -2,10 +2,10 @@
 # epiworldRcalibrate
 
 <!-- badges: start -->
-[![ForeSITE Group](https://github.com/EpiForeSITE/software/raw/e82ed88f75e0fe5c0a1a3b38c2b94509f122019c/docs/assets/foresite-software-badge.svg)](https://github.com/EpiForeSITE)
-[![R-CMD-check](https://github.com/sima-njf/epiworldRcalibrate/actions/workflows/r.yml/badge.svg)](https://github.com/sima-njf/epiworldRcalibrate/actions/workflows/r.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/sima-njf/epiworldRcalibrate/blob/main/LICENSE.md)
-[![lifecycle](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+<a href="https://github.com/EpiForeSITE"><img src="https://github.com/EpiForeSITE/software/raw/e82ed88f75e0fe5c0a1a3b38c2b94509f122019c/docs/assets/foresite-software-badge.svg"></a>
+<a href="https://github.com/sima-njf/epiworldRcalibrate/actions/workflows/r-cmd-check.yml"><img src="https://github.com/sima-njf/epiworldRcalibrate/actions/workflows/r-cmd-check.yml/badge.svg"></a>
+<a href="https://github.com/sima-njf/epiworldRcalibrate/blob/main/LICENSE.md"><img src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
+
 <!-- badges: end -->
 
 ### **Deep Learning Calibration for epiworldR (BiLSTM-Based)**

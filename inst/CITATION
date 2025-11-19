@@ -17,7 +17,8 @@ bibentry(
   author   = c(
     person("Sima", "Najafzadehkhoei"),
     person("George", "Vega Yon"),
-    person("Bernardo", "Modenesi")
+    person("Bernardo", "Modenesi"),
+    person("Derek", "Meyer")
   ),
   year     = 2025,
   journal  = "arXiv",
