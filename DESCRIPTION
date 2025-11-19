@@ -19,7 +19,7 @@ Authors@R: c(
          comment = "Award number 1U01CK000585; 75D30121F00003")
   )
 Description: Provides functions for calibration using Long-short term memory (LSTM).
-    The package includes the pre-treined model which can be used directly on your data to do the calibration.
+    The package includes the pre-trained model which can be used directly on your data to do the calibration.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
