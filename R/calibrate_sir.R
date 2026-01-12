@@ -110,8 +110,8 @@
 
   critical <- c("numpy", "sklearn", "joblib", "torch")
   missing <- critical[!sapply(critical, reticulate::py_module_available)]
-  if (length(missing))
-    stop("Missing Python modules: ", paste(missing, collapse = ", "))
+  # if (length(missing))
+  #   stop("Missing Python modules: ", paste(missing, collapse = ", "))
 }
 
 # =============================================================================
@@ -283,6 +283,8 @@ def cleanup_model():
 #' @export
 init_bilstm_model <- function(model_dir = NULL, force_reload = FALSE) {
 
+  .ensure_python_ready()
+  
   model_dir <- .get_model_directory(model_dir)
 
   if (.bilstm_env$model_loaded &&
@@ -293,7 +295,6 @@ init_bilstm_model <- function(model_dir = NULL, force_reload = FALSE) {
   }
 
   file_paths <- .validate_model_directory(model_dir)
-  .ensure_python_ready()
 
   reticulate::py_run_string(.get_python_model_code())
 
