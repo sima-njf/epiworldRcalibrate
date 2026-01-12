@@ -2,6 +2,7 @@
 title: "Introduction to LSTM-based Calibration (One-Line Usage)"
 author: "Sima Najafzadehkhoei"
 date: today
+format: html
 vignette: >
   %\VignetteIndexEntry{Introduction to LSTM-based calibration}
   %\VignetteEngine{quarto::format}

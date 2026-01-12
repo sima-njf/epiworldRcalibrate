@@ -3,10 +3,15 @@ title: "LSTM-Calibrated SIR Model for COVID-19 Dynamics"
 subtitle: "Utah COVID-19 Case Prediction with Uncertainty Quantification"
 author: "Sima Najafzadehkhoei"
 date: today
-vignette: >
-  %\VignetteIndexEntry{LSTM-Calibrated SIR Model for COVID-19 Dynamics}
-  %\VignetteEngine{quarto::html}
-  %\VignetteEncoding{UTF-8}
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: show
+    code-tools: true
+    theme: cosmo
+    embed-resources: true
+editor: visual
 ---
 
 ## Introduction
