@@ -71,7 +71,9 @@
   } else {
     vname <- .bilstm_env$venv_name
     envs <- tryCatch(reticulate::virtualenv_list(), error = function(e) character())
-    if (vname %in% envs) {
+    venv_is_new <- !(vname %in% envs)
+    
+    if (!venv_is_new) {
       reticulate::use_virtualenv(vname, required = FALSE)
     } else {
       python_path <- .find_python()
@@ -81,11 +83,24 @@
       reticulate::virtualenv_create(vname, python = python_path)
       reticulate::use_virtualenv(vname, required = FALSE)
     }
+    
+    # For new virtualenvs, install all required packages before initializing Python
+    # This avoids the issue where Python is initialized before packages are installed
+    if (venv_is_new) {
+      message("Installing required Python packages to new virtualenv...")
+      reticulate::py_install(c("numpy", "scikit-learn", "joblib"), pip = TRUE)
+      reticulate::py_install(
+        "torch", pip = TRUE,
+        pip_options = c("--index-url", "https://download.pytorch.org/whl/cpu")
+      )
+    }
   }
 
+  # Now initialize Python and check for missing packages
   if (!reticulate::py_available(initialize = TRUE))
     stop("Python could not be initialized.")
 
+  # Check if any critical packages are missing (e.g., in user-specified Python)
   needs <- c(
     numpy = !reticulate::py_module_available("numpy"),
     sklearn = !reticulate::py_module_available("sklearn"),
@@ -93,7 +108,9 @@
     torch = !reticulate::py_module_available("torch")
   )
 
+  # Install any missing packages (typically only for user-specified Python)
   if (any(needs)) {
+    message("Some required packages are missing. Installing...")
     pkgs <- names(needs)[needs]
     pkgs[pkgs == "sklearn"] <- "scikit-learn"
 
@@ -106,12 +123,20 @@
         pip_options = c("--index-url", "https://download.pytorch.org/whl/cpu")
       )
     }
+    
+    # Warn user that they may need to restart R session
+    message("Packages installed. If you encounter 'module not found' errors, please restart your R session.")
   }
 
+  # Verify critical packages (best effort)
   critical <- c("numpy", "sklearn", "joblib", "torch")
   missing <- critical[!sapply(critical, reticulate::py_module_available)]
-  # if (length(missing))
-  #   stop("Missing Python modules: ", paste(missing, collapse = ", "))
+  if (length(missing)) {
+    stop(
+      "Missing Python modules: ", paste(missing, collapse = ", "),
+      "\nIf packages were just installed, please restart your R session."
+    )
+  }
 }
 
 # =============================================================================
