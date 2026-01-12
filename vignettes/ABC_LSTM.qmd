@@ -3,15 +3,10 @@ title: "Comparing BiLSTM and ABC Calibration for SIR Models"
 subtitle: "Utah COVID-19 Case Prediction with Uncertainty Quantification"
 author: "Sima Najafzadehkhoei"
 date: today
-format:
-  html:
-    toc: true
-    toc-depth: 3
-    code-fold: show
-    code-tools: true
-    theme: cosmo
-    embed-resources: true
-editor: visual
+vignette: >
+  %\VignetteIndexEntry{Comparing BiLSTM and ABC Calibration for SIR Models}
+  %\VignetteEngine{quarto::html}
+  %\VignetteEncoding{UTF-8}
 ---
 
 ## Introduction
@@ -172,7 +167,9 @@ bilstm_quantiles <- bilstm_transitions %>%
 ```
 
 ## Method 2: ABC Calibration
+
 ### Load Pre-Calibrated ABC Results
+
 ```{r abc-load-results}
 cat("\n=== ABC Calibration (Pre-computed) ===\n")
 
@@ -224,6 +221,7 @@ cat("R0:                ", sprintf("%.4f", abc_R0), "\n", sep = "")
 ```
 
 ### ABC Posterior Distributions
+
 ```{r abc-posterior, fig.width=12, fig.height=4}
 # Extract posterior samples
 posterior <- abc_calibration_params$posterior_samples
@@ -267,6 +265,7 @@ ggplot(posterior_long, aes(x = value)) +
 ```
 
 ### Stochastic Simulations (ABC)
+
 ```{r abc-simulations}
 cat("\n=== Running 2,000 Stochastic Simulations (ABC) ===\n")
 
@@ -300,7 +299,6 @@ abc_sim_results <- run_multiple_get_results(
   freader = data.table::fread
 )
 ```
-
 
 ### Extract ABC Confidence Intervals
 
