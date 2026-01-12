@@ -90,7 +90,7 @@ get_covid_data <- function(n_days) {
   covid_data$Date <- as.Date(covid_data$Date)
   
   last_date <- max(covid_data$Date, na.rm = TRUE)
-  covid_data <- subset(covid_data, Date > (last_date - n_days)) %>% 
+  covid_data <- subset(covid_data, Date > (last_date - n_days)) |> 
     arrange(Date)
   
   stopifnot("Daily.Cases" %in% names(covid_data))
@@ -180,12 +180,12 @@ bilstm_results <- run_multiple_get_results(
 ### Extract BiLSTM Confidence Intervals
 
 ```{r bilstm-ci}
-bilstm_transitions <- bilstm_results$transition %>%
-  filter(from == "Susceptible", to == "Infected") %>%
+bilstm_transitions <- bilstm_results$transition |>
+  filter(from == "Susceptible", to == "Infected") |>
   arrange(sim_num, date)
 
-bilstm_quantiles <- bilstm_transitions %>%
-  group_by(date) %>%
+bilstm_quantiles <- bilstm_transitions |>
+  group_by(date) |>
   summarize(
     lower_ci = quantile(counts, 0.025),
     upper_ci = quantile(counts, 0.975),
@@ -362,12 +362,12 @@ abc_sim_results <- run_multiple_get_results(
 ### Extract ABC Confidence Intervals
 
 ```{r abc-ci}
-abc_transitions <- abc_sim_results$transition %>%
-  filter(from == "Susceptible", to == "Infected") %>%
+abc_transitions <- abc_sim_results$transition |>
+  filter(from == "Susceptible", to == "Infected") |>
   arrange(sim_num, date)
 
-abc_quantiles <- abc_transitions %>%
-  group_by(date) %>%
+abc_quantiles <- abc_transitions |>
+  group_by(date) |>
   summarize(
     lower_ci = quantile(counts, 0.025),
     upper_ci = quantile(counts, 0.975),
@@ -527,18 +527,18 @@ print(p_comparison)
 
 ```{r performance-metrics}
 # BiLSTM metrics
-bilstm_coverage <- plot_df %>%
-  mutate(in_ci = Observed >= BiLSTM_lower & Observed <= BiLSTM_upper) %>%
-  summarize(coverage = mean(in_ci) * 100) %>%
+bilstm_coverage <- plot_df |>
+  mutate(in_ci = Observed >= BiLSTM_lower & Observed <= BiLSTM_upper) |>
+  summarize(coverage = mean(in_ci) * 100) |>
   pull(coverage)
 
 bilstm_rmse <- sqrt(mean((plot_df$BiLSTM_median - plot_df$Observed)^2))
 bilstm_mae <- mean(abs(plot_df$BiLSTM_median - plot_df$Observed))
 
 # ABC metrics
-abc_coverage <- plot_df %>%
-  mutate(in_ci = Observed >= ABC_lower & Observed <= ABC_upper) %>%
-  summarize(coverage = mean(in_ci) * 100) %>%
+abc_coverage <- plot_df |>
+  mutate(in_ci = Observed >= ABC_lower & Observed <= ABC_upper) |>
+  summarize(coverage = mean(in_ci) * 100) |>
   pull(coverage)
 
 abc_rmse <- sqrt(mean((plot_df$ABC_median - plot_df$Observed)^2))

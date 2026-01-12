@@ -40,7 +40,6 @@ Imports:
     reticulate (>= 1.2),
     utils
 VignetteBuilder: quarto
-Config/reticulate/disallow-python-install: true
 Depends: 
     R (>= 3.5)
 LazyData: true

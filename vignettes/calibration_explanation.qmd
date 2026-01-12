@@ -104,8 +104,8 @@ lstm_params <- tibble(
 )
 
 params_comparison <- bind_rows(
-  true_params %>% mutate(param_type = "true"),
-  lstm_params %>% mutate(param_type = "lstm")
+  true_params |> mutate(param_type = "true"),
+  lstm_params |> mutate(param_type = "lstm")
 )
 
 params_comparison
@@ -135,14 +135,14 @@ for (i in seq_len(nrow(params_comparison))) {
   run_multiple(forward_model, ndays = ndays, nsims = n_reps, saver = saver, nthreads = 8)
   results <- run_multiple_get_results(forward_model, nthreads = 2)
 
-  sim_data <- results$total_hist %>%
-    group_by(date, state) %>%
+  sim_data <- results$total_hist |>
+    group_by(date, state) |>
     summarize(
       mean_count = mean(counts),
       ci_lower   = quantile(counts, 0.025),
       ci_upper   = quantile(counts, 0.975),
       .groups = "drop"
-    ) %>%
+    ) |>
     mutate(param_type = row$param_type)
 
   all_simulation_results <- bind_rows(all_simulation_results, sim_data)
@@ -155,10 +155,10 @@ for (i in seq_len(nrow(params_comparison))) {
 method_colors <- c("true" = "#440154FF", "lstm" = "#35B779FF")
 
 create_sir_plot <- function(data, state_name, title) {
-  plot_data <- data %>% filter(state == state_name)
+  plot_data <- data |> filter(state == state_name)
   ggplot(plot_data, aes(x = date, color = param_type)) +
     geom_ribbon(
-      data = plot_data %>% filter(param_type == "lstm"),
+      data = plot_data |> filter(param_type == "lstm"),
       aes(ymin = ci_lower, ymax = ci_upper, fill = param_type),
       alpha = 0.2, color = NA
     ) +
@@ -190,7 +190,7 @@ param_bias <- tibble(
   Parameter = c("Contact Rate", "Transmission Rate", "R0"),
   True = c(true_params$contact_rate, true_params$transmission_rate, true_params$R0),
   LSTM = c(lstm_params$contact_rate, lstm_params$transmission_rate, lstm_params$R0)
-) %>%
+) |>
   mutate(
     Bias = LSTM - True,
   )

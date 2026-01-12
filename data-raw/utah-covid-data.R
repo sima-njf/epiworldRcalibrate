@@ -46,7 +46,7 @@ get_covid_data <- function(n_days) {
   covid_data$Date <- as.Date(covid_data$Date)
 
   last_date <- max(covid_data$Date, na.rm = TRUE)
-  covid_data <- subset(covid_data, Date > (last_date - n_days)) %>%
+  covid_data <- subset(covid_data, Date > (last_date - n_days)) |>
     arrange(Date)
 
   stopifnot("Daily.Cases" %in% names(covid_data))

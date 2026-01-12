@@ -26,12 +26,9 @@ This analysis demonstrates an innovative approach to epidemic modeling by combin
 Load required packages for data manipulation, modeling, and visualization:
 
 ```{r setup, message=FALSE, warning=FALSE}
-suppressPackageStartupMessages({
-  library(tidyverse)
-  library(ggplot2)
-  library(epiworldR)
-  library(epiworldRcalibrate)
-})
+library(ggplot2)
+library(epiworldR)
+library(epiworldRcalibrate)
 ```
 
 ## Data Acquisition
@@ -41,7 +38,6 @@ suppressPackageStartupMessages({
 We create helper functions to download and process Utah's COVID-19 surveillance data:
 
 ```{r data-helpers}
-
 data("utah_covid_data")
 
 # Now you can use it directly
@@ -61,7 +57,7 @@ get_covid_data <- function(n_days) {
   
   # Filter to last n_days
   last_date <- max(covid_data$Date, na.rm = TRUE)
-  covid_data <- subset(covid_data, Date > (last_date - n_days)) %>% 
+  covid_data <- subset(covid_data, Date > (last_date - n_days)) |> 
     dplyr::arrange(Date)
   
   stopifnot("Daily.Cases" %in% names(covid_data))
@@ -183,8 +179,8 @@ The model tracks all state transitions. We focus on Susceptible → Infected tra
 ```{r extract-transitions}
 cat("=== Extracting S→I transitions ===\n")
 
-transitions <- sim_results$transition %>%
-  filter(from == "Susceptible", to == "Infected") %>%
+transitions <- sim_results$transition |>
+  filter(from == "Susceptible", to == "Infected") |>
   arrange(sim_num, date)
 
 cat("Dimensions:", nrow(transitions), "rows ×", ncol(transitions), "columns\n")
@@ -198,8 +194,8 @@ For each day, we calculate quantiles across all 2,000 simulations:
 ```{r calculate-quantiles}
 cat("=== Calculating 95% CI (2.5th and 97.5th percentiles) ===\n")
 
-quantiles_df <- transitions %>%
-  group_by(date) %>%
+quantiles_df <- transitions |>
+  group_by(date) |>
   summarize(
     lower_ci = quantile(counts, 0.025),
     upper_ci = quantile(counts, 0.975),
@@ -218,7 +214,7 @@ The 95% confidence interval represents the range containing 95% of simulation ou
 ### Merge with Observed Data
 
 ```{r prepare-plot-data}
-plot_df <- quantiles_df %>%
+plot_df <- quantiles_df |>
   mutate(
     Date           = covid_data$Date,
     observed_cases = incidence
@@ -288,8 +284,8 @@ The red shaded region represents the 95% confidence interval from 2,000 simulati
 
 ```{r performance-metrics}
 # CI coverage
-coverage <- plot_df %>%
-  mutate(in_ci = observed_cases >= lower_ci & observed_cases <= upper_ci) %>%
+coverage <- plot_df |>
+  mutate(in_ci = observed_cases >= lower_ci & observed_cases <= upper_ci) |>
   summarize(
     coverage_rate = mean(in_ci) * 100,
     n_days = n(),

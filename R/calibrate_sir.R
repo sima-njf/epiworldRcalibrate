@@ -71,7 +71,9 @@
   } else {
     vname <- .bilstm_env$venv_name
     envs <- tryCatch(reticulate::virtualenv_list(), error = function(e) character())
-    if (vname %in% envs) {
+    venv_is_new <- !(vname %in% envs)
+    
+    if (!venv_is_new) {
       reticulate::use_virtualenv(vname, required = FALSE)
     } else {
       python_path <- .find_python()
@@ -81,11 +83,24 @@
       reticulate::virtualenv_create(vname, python = python_path)
       reticulate::use_virtualenv(vname, required = FALSE)
     }
+    
+    # For new virtualenvs, install all required packages before initializing Python
+    # This avoids the issue where Python is initialized before packages are installed
+    if (venv_is_new) {
+      message("Installing required Python packages to new virtualenv...")
+      reticulate::py_install(c("numpy", "scikit-learn", "joblib"), pip = TRUE)
+      reticulate::py_install(
+        "torch", pip = TRUE,
+        pip_options = c("--index-url", "https://download.pytorch.org/whl/cpu")
+      )
+    }
   }
 
+  # Now initialize Python and check for missing packages
   if (!reticulate::py_available(initialize = TRUE))
     stop("Python could not be initialized.")
 
+  # Check if any critical packages are missing (e.g., in user-specified Python)
   needs <- c(
     numpy = !reticulate::py_module_available("numpy"),
     sklearn = !reticulate::py_module_available("sklearn"),
@@ -93,7 +108,9 @@
     torch = !reticulate::py_module_available("torch")
   )
 
+  # Install any missing packages (typically only for user-specified Python)
   if (any(needs)) {
+    message("Some required packages are missing. Installing...")
     pkgs <- names(needs)[needs]
     pkgs[pkgs == "sklearn"] <- "scikit-learn"
 
@@ -106,12 +123,37 @@
         pip_options = c("--index-url", "https://download.pytorch.org/whl/cpu")
       )
     }
+    
+    # Try to import modules to verify they're accessible after installation
+    # This also helps populate Python's import cache
+    import_success <- tryCatch({
+      if ("torch" %in% pkgs) reticulate::py_run_string("import torch")
+      if ("numpy" %in% pkgs) reticulate::py_run_string("import numpy")
+      if ("sklearn" %in% pkgs) reticulate::py_run_string("import sklearn")
+      if ("joblib" %in% pkgs) reticulate::py_run_string("import joblib")
+      TRUE
+    }, error = function(e) {
+      FALSE
+    })
+    
+    if (!import_success) {
+      stop(
+        "Packages were installed but could not be imported. ",
+        "This can happen when Python is already initialized. ",
+        "Please restart your R session and try again."
+      )
+    }
   }
 
+  # Verify critical packages (best effort)
   critical <- c("numpy", "sklearn", "joblib", "torch")
   missing <- critical[!sapply(critical, reticulate::py_module_available)]
-  if (length(missing))
-    stop("Missing Python modules: ", paste(missing, collapse = ", "))
+  if (length(missing)) {
+    stop(
+      "Missing Python modules: ", paste(missing, collapse = ", "),
+      "\nPlease restart your R session if packages were just installed."
+    )
+  }
 }
 
 # =============================================================================
@@ -283,6 +325,8 @@ def cleanup_model():
 #' @export
 init_bilstm_model <- function(model_dir = NULL, force_reload = FALSE) {
 
+  .ensure_python_ready()
+  
   model_dir <- .get_model_directory(model_dir)
 
   if (.bilstm_env$model_loaded &&
@@ -293,7 +337,6 @@ init_bilstm_model <- function(model_dir = NULL, force_reload = FALSE) {
   }
 
   file_paths <- .validate_model_directory(model_dir)
-  .ensure_python_ready()
 
   reticulate::py_run_string(.get_python_model_code())
 

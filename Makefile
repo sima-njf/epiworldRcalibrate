@@ -15,16 +15,12 @@ ${PKGNAME}_${VERSION}.tar.gz: R/* inst/* man/* vignettes/*
 build: ${PKGNAME}_${VERSION}.tar.gz
 
 # Install package
-install: build
-	R CMD INSTALL ${PKGNAME}_${VERSION}.tar.gz
+install:
+	Rscript --vanilla -e 'devtools::install()'
 
 # Check package (CRAN style)
-check: build
-	R CMD check --as-cran ${PKGNAME}_${VERSION}.tar.gz
-
-# Quick check without --as-cran
-check-quick: build
-	R CMD check ${PKGNAME}_${VERSION}.tar.gz
+check:
+	Rscript --vanilla -e 'devtools::check()'
 
 # Generate documentation
 man: R/*

@@ -11,15 +11,15 @@ A list with 13 elements:
 \item{recovery_rate}{Median calibrated recovery rate}
 \item{transmission_prob}{Median calibrated transmission probability}
 \item{R0}{Basic reproduction number}
-\item{contact_rate_ci}{95\\% credible interval for contact rate}
-\item{recovery_rate_ci}{95\\% credible interval for recovery rate}
-\item{transmission_prob_ci}{95\\% credible interval for transmission probability}
+\item{contact_rate_ci}{95\% credible interval for contact rate}
+\item{recovery_rate_ci}{95\% credible interval for recovery rate}
+\item{transmission_prob_ci}{95\% credible interval for transmission probability}
 \item{calibration_time_seconds}{Calibration time in seconds}
 \item{n_samples}{Total MCMC samples (2000)}
 \item{burnin}{Burn-in samples (1000)}
 \item{epsilon}{ABC tolerance parameter}
 \item{seed}{Random seed (122)}
-\item{posterior_samples}{Matrix of posterior samples (1000 × 3)}
+\item{posterior_samples}{Matrix of posterior samples (1000 x 3)}
 }
 }
 \source{
@@ -34,7 +34,7 @@ Utah COVID-19 data using LFMCMC methods.
 }
 \details{
 Calibrated using last 61 days of Utah COVID-19 data with population N=30,000.
-Uses exponential kernel with epsilon = 5\\% of observed incidence L2 norm.
+Uses exponential kernel with epsilon = 5\% of observed incidence L2 norm.
 }
 \examples{
 data(abc_calibration_params)
