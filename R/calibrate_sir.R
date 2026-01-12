@@ -124,8 +124,25 @@
       )
     }
     
-    # Warn user that they may need to restart R session
-    message("Packages installed. If you encounter 'module not found' errors, please restart your R session.")
+    # Try to import modules to verify they're accessible after installation
+    # This also helps populate Python's import cache
+    import_success <- tryCatch({
+      if ("torch" %in% pkgs) reticulate::py_run_string("import torch")
+      if ("numpy" %in% pkgs) reticulate::py_run_string("import numpy")
+      if ("sklearn" %in% pkgs) reticulate::py_run_string("import sklearn")
+      if ("joblib" %in% pkgs) reticulate::py_run_string("import joblib")
+      TRUE
+    }, error = function(e) {
+      FALSE
+    })
+    
+    if (!import_success) {
+      stop(
+        "Packages were installed but could not be imported. ",
+        "This can happen when Python is already initialized. ",
+        "Please restart your R session and try again."
+      )
+    }
   }
 
   # Verify critical packages (best effort)
@@ -134,7 +151,7 @@
   if (length(missing)) {
     stop(
       "Missing Python modules: ", paste(missing, collapse = ", "),
-      "\nIf packages were just installed, please restart your R session."
+      "\nPlease restart your R session if packages were just installed."
     )
   }
 }
