@@ -1,7 +1,7 @@
 URL: https://sima-njf.github.io/epiworldRcalibrate/, https://github.com/sima-njf/epiworldRcalibrate
 BugReports: https://github.com/sima-njf/epiworldRcalibrate/issues
 Package: epiworldRcalibrate
-Title: Calibration with LSTM models
+Title: Fast and Effortless Calibration of Agent-Based Models using Machine Learning
 Version: 0.1.0
 Authors@R: c(
   person(
@@ -18,27 +18,27 @@ Authors@R: c(
   person("Centers for Disease Control and Prevention", role = "fnd",
          comment = "Award number 1U01CK000585; 75D30121F00003")
   )
-Description: Provides functions for calibration using Long-short term memory (LSTM).
-    The package includes the pre-trained model which can be used directly on your data to do the calibration.
+Description:
+  The 'epiworldRcalibrate' package provides tools and pre-trained Machine Learning [ML] models for calibration of Agent-Based Models [ABMs] built with the R package 'epiworldR'. It implements methods described in Najafzadehkhoei, Vega Yon, Modenesi, and Meyer (2025) <doi:10.48550/arXiv.2509.07013>. Using 'epiworldRcalibrate', users can automatically calibrate ABMs in seconds with its pre-trained ML models, effectively focusing on simulation rather than calibration. This tool bridges a gap by allowing public health practitioners to run their own ABMs without the advanced technical expertise often required by calibration.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 Suggests: 
-    knitr,
-    rmarkdown,
-    testthat (>= 3.0.0),
-    quarto,
-    epiworldR,
-    data.table,
-    dplyr,
-    ggplot2 (>= 3.4.0),
-    patchwork,
-    tidyverse
+  knitr,
+  rmarkdown,
+  testthat (>= 3.0.0),
+  quarto,
+  epiworldR,
+  data.table,
+  dplyr,
+  ggplot2 (>= 3.4.0),
+  patchwork,
+  tidyverse
 Config/testthat/edition: 3
 Imports:
-    reticulate (>= 1.2),
-    utils
+  reticulate (>= 1.2),
+  utils
 VignetteBuilder: quarto
 Config/reticulate/disallow-python-install: true
 Depends: 

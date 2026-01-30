@@ -1,12 +1,12 @@
 bibentry(
   bibtype  = "Manual",
-  title    = "epiworldRcalibrate: Calibration with LSTM models",
+  title    = "epiworldRcalibrate: Fast and Effortless Calibration of Agent-Based Models using Machine Learning",
   author   = c(
     person("Sima", "Najafzadehkhoei"),
     person("George", "Vega Yon"),
     person("Bernardo", "Modenesi")
   ),
-  year     = 2025,
+  year     = 2026,
   note     = "R package version 0.1.0",
   url      = "https://github.com/sima-njf/epiworldRcalibrate"
 )
