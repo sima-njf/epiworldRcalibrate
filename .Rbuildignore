@@ -7,3 +7,6 @@
 ^Makefile$
 ^\.github$
 ^docs$
+^.devcontainer$
+^inst/vignettes$
+^data-raw$
