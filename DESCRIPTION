@@ -24,17 +24,10 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
-Suggests: 
-  knitr,
-  rmarkdown,
+Suggests:
   testthat (>= 3.0.0),
-  quarto,
   epiworldR,
-  data.table,
-  dplyr,
-  ggplot2 (>= 3.4.0),
-  patchwork,
-  tidyverse
+  data.table
 Config/testthat/edition: 3
 Imports:
   reticulate (>= 1.2),
