@@ -39,25 +39,6 @@ jobs:
           extra-packages: any::rcmdcheck
           needs: check
 
-      # ---------- Python + Torch (+extras) for reticulate (Ubuntu only) ----------
-      - name: Set up Python for reticulate
-        if: runner.os == 'Linux'
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install CPU-only torch + extras for reticulate
-        if: runner.os == 'Linux'
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
-          python -m pip install numpy joblib scikit-learn
-
-      - name: Tell reticulate which Python to use
-        if: runner.os == 'Linux'
-        run: echo "RETICULATE_PYTHON=$(which python)" >> $GITHUB_ENV
-      # --------------------------------------------------------------------------
-
       # Ubuntu release = full check WITH vignettes
       - name: Check package (Ubuntu release - with vignettes)
         if: runner.os == 'Linux' && matrix.config.r == 'release'
