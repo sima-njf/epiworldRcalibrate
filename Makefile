@@ -1,80 +1,24 @@
-# Extract package name and version from DESCRIPTION
-VERSION:=$(shell Rscript -e 'x<-readLines("DESCRIPTION");cat(gsub(".+[:]\\s*", "", x[grepl("^Vers", x)]))')
-PKGNAME:=$(shell Rscript -e 'x<-readLines("DESCRIPTION");cat(gsub(".+[:]\\s*", "", x[grepl("^Package", x)]))')
-
-# Mark phony targets
-.PHONY: build install check clean man test document vignettes style lint debug profile
-
-# Main build target
-${PKGNAME}_${VERSION}.tar.gz: R/* inst/* man/* vignettes/*
-	$(MAKE) clean ;\
-	Rscript -e 'roxygen2::roxygenize()' && \
-	R CMD build .
-
-# Build package
-build: ${PKGNAME}_${VERSION}.tar.gz
+.DEFAULT_GOAL := help
 
 # Install package
-install: build
-	R CMD INSTALL ${PKGNAME}_${VERSION}.tar.gz
+install:
+	Rscript --vanilla -e 'devtools::install()'
 
 # Check package (CRAN style)
-check: build
-	R CMD check --as-cran ${PKGNAME}_${VERSION}.tar.gz
-
-# Quick check without --as-cran
-check-quick: build
-	R CMD check ${PKGNAME}_${VERSION}.tar.gz
+check:
+	Rscript --vanilla -e 'devtools::check()'
 
 # Generate documentation
 man: R/*
-	Rscript --vanilla -e 'roxygen2::roxygenize()'
+	Rscript --vanilla -e 'devtools::document()'
 
 # Alternative documentation command
-document: man
+docs: man
 
 # Run tests
 test:
 	Rscript -e 'devtools::test()'
 
-# Build vignettes
-vignettes:
-	Rscript -e 'devtools::build_vignettes()'
-
-# Style code
-style:
-	Rscript -e 'styler::style_pkg()'
-
-# Lint code
-lint:
-	Rscript -e 'lintr::lint_package()'
-
-# Load package for development
-load:
-	Rscript -e 'devtools::load_all()'
-
-# Install dependencies
-deps:
-	Rscript -e 'devtools::install_deps(dependencies = TRUE)'
-
-# Debug with gdb (if you have C++ code)
-debug:
-	R -d gdb
-
-# Profile with valgrind (if you have C++ code)
-profile: install
-	R --debugger=valgrind --debugger-args='--tool=cachegrind --cachegrind-out-file=test.cache.out'
-
-# Development workflow
-dev: deps document load test
-
-# Release workflow
-release: document test check
-	@echo "Package ${PKGNAME} v${VERSION} ready for release!"
-
-# Initialize BiLSTM models (specific to your package)
-init-models:
-	Rscript -e 'epiworldRcalibrate::init_bilstm_model()'
 
 # Run example analysis
 example:
@@ -95,20 +39,11 @@ info:
 # Help target
 help:
 	@echo "Available targets:"
-	@echo "  build       - Build package tarball"
 	@echo "  install     - Install package"
-	@echo "  check       - Run R CMD check --as-cran"
-	@echo "  check-quick - Run R CMD check (faster)"
+	@echo "  check       - Run R CMD check (CRAN style)"
+	@echo "  man         - Generate documentation"
+	@echo "  docs        - Generate documentation (alias for man)"
 	@echo "  test        - Run package tests"
-	@echo "  document    - Generate documentation"
-	@echo "  vignettes   - Build vignettes"
-	@echo "  style       - Style code with styler"
-	@echo "  lint        - Lint code with lintr"
-	@echo "  load        - Load package for development"
-	@echo "  deps        - Install dependencies"
-	@echo "  dev         - Development workflow"
-	@echo "  release     - Release workflow"
-	@echo "  init-models - Initialize BiLSTM models"
 	@echo "  example     - Run example analysis"
 	@echo "  clean       - Remove build artifacts"
 	@echo "  info        - Show package info"
