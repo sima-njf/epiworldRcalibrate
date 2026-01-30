@@ -205,10 +205,10 @@ verification_results = verify_imports()
     for (pkg_name in names(results)) {
       pkg_result <- results[[pkg_name]]
       if (pkg_result$status == "ok") {
-        message("✓ ", pkg_name, " v", pkg_result$version, " loaded successfully")
+        message("[OK] ", pkg_name, " v", pkg_result$version, " loaded successfully")
       } else {
         failed <- c(failed, pkg_name)
-        message("✗ ", pkg_name, " failed: ", pkg_result$error)
+        message("[FAIL] ", pkg_name, " failed: ", pkg_result$error)
       }
     }
 
