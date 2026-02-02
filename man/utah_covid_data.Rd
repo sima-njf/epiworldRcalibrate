@@ -3,48 +3,26 @@
 \docType{data}
 \name{utah_covid_data}
 \alias{utah_covid_data}
-\title{Utah COVID-19 Data}
+\title{Utah COVID-19 epidemic trends}
 \format{
-A data frame with the following columns:
+A data frame with 365 rows and 5 variables:
 \describe{
-\item{Date}{Date of observation (Date class)}
-\item{Daily.Cases}{Number of daily COVID-19 cases (numeric)}
-\item{...}{Additional columns from the Utah COVID-19 trends data}
+\item{Date}{Date of the observation (Date).}
+\item{Daily.Cases}{Number of newly reported COVID-19 cases (numeric).}
+\item{Smoothed.3.Day.Moving.Average}{Smoothed daily cases using a 3-day moving average (numeric).}
+\item{X3.Day.Moving.Average}{Alternative 3-day moving average of daily cases (numeric).}
+\item{Status}{Indicator of reporting or epidemic status (character or factor).}
 }
 }
 \source{
-Utah Coronavirus Dashboard
+Utah Department of Health COVID-19 Dashboard:
 \url{https://coronavirus-dashboard.utah.gov/}
 }
 \usage{
 utah_covid_data
 }
 \description{
-A dataset containing COVID-19 trends and epidemic data for Utah,
-downloaded from the Utah Coronavirus Dashboard.
-}
-\details{
-This dataset is extracted from the "Trends_Epidemic" file within the
-Utah COVID-19 data ZIP archive. The data includes the most recent
-period of observations as specified during data preparation.
-
-The data is processed to:
-\itemize{
-\item Convert dates to Date class
-\item Filter to recent observations
-\item Arrange chronologically by date
-}
-}
-\examples{
-\dontrun{
-# Load the data
-data(utah_covid_data)
-
-# View structure
-str(utah_covid_data)
-
-# Plot daily cases
-plot(utah_covid_data$Date, utah_covid_data$Daily.Cases, type = "l")
-}
+Daily COVID-19 epidemic indicators for the state of Utah, obtained from the
+Utah Department of Health COVID-19 dashboard.
 }
 \keyword{datasets}

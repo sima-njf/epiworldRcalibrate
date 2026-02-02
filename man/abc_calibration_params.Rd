@@ -3,43 +3,41 @@
 \docType{data}
 \name{abc_calibration_params}
 \alias{abc_calibration_params}
-\title{ABC Calibration Parameters for COVID-19 SIR Model}
+\title{ABC calibration results for COVID-19 SIR model}
 \format{
-A list with 13 elements:
+A named list with the following elements:
 \describe{
-\item{contact_rate}{Median calibrated contact rate}
-\item{recovery_rate}{Median calibrated recovery rate}
-\item{transmission_prob}{Median calibrated transmission probability}
-\item{R0}{Basic reproduction number}
-\item{contact_rate_ci}{95\% credible interval for contact rate}
-\item{recovery_rate_ci}{95\% credible interval for recovery rate}
-\item{transmission_prob_ci}{95\% credible interval for transmission probability}
-\item{calibration_time_seconds}{Calibration time in seconds}
-\item{n_samples}{Total MCMC samples (2000)}
-\item{burnin}{Burn-in samples (1000)}
-\item{epsilon}{ABC tolerance parameter}
-\item{seed}{Random seed (122)}
-\item{posterior_samples}{Matrix of posterior samples (1000 × 3)}
+\item{contact_rate}{Posterior median of the contact rate.}
+\item{recovery_rate}{Posterior median of the recovery rate.}
+\item{transmission_prob}{Posterior median of the transmission probability.}
+\item{R0}{Basic reproduction number computed from posterior medians.}
+\item{contact_rate_ci}{95\\% credible interval for the contact rate.}
+\item{recovery_rate_ci}{95\\% credible interval for the recovery rate.}
+\item{transmission_prob_ci}{95\\% credible interval for the transmission probability.}
+\item{calibration_time_seconds}{Total runtime of the ABC calibration (seconds).}
+\item{n_samples}{Number of MCMC samples used in calibration.}
+\item{burnin}{Number of burn-in iterations discarded.}
+\item{epsilon}{ABC tolerance parameter.}
+\item{seed}{Random seed used for reproducibility.}
+\item{posterior_samples}{Matrix of post–burn-in accepted parameter samples.}
+\item{acceptance_rate}{Acceptance rate of the ABC-MCMC algorithm (percent).}
 }
 }
 \source{
-Calibrated from \code{\link{utah_covid_data}}
+Generated internally using the script
+\code{data-raw/process_covid_calibration.R}.
 }
 \usage{
 abc_calibration_params
 }
 \description{
-Results from ABC calibration of a SIR-CONN epidemic model fitted to
-Utah COVID-19 data using LFMCMC methods.
+Results from Approximate Bayesian Computation (ABC) calibration of an
+SIR network model fitted to Utah COVID-19 incidence data.
 }
 \details{
-Calibrated using last 61 days of Utah COVID-19 data with population N=30,000.
-Uses exponential kernel with epsilon = 5\% of observed incidence L2 norm.
-}
-\examples{
-data(abc_calibration_params)
-abc_calibration_params$contact_rate
-abc_calibration_params$R0
-
+The calibration is performed using a likelihood-free Markov chain Monte Carlo
+(LFMCMC) algorithm implemented in the \pkg{epiworldRcalibrate} package.
+Summary statistics are computed from observed and simulated incidence curves,
+and parameter proposals are accepted based on a weighted kernel distance.
 }
 \keyword{datasets}
