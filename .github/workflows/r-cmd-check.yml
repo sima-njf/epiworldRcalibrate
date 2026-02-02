@@ -45,7 +45,6 @@ jobs:
         uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
-          error-on: '"error"'   # <-- ONLY fail on ERROR, not WARNING
 
       # All other OS/R combos = skip vignettes
       - name: Check package (other platforms - no vignettes)
@@ -55,7 +54,6 @@ jobs:
           build_args: 'c("--no-build-vignettes", "--no-manual")'
           args: 'c("--as-cran", "--no-manual", "--ignore-vignettes")'
           upload-snapshots: true
-          error-on: '"error"'   # <-- ONLY fail on ERROR
 
       # --------------------------------------------------------------------------
       # Build tarballs
@@ -63,14 +61,10 @@ jobs:
 
       - name: Build tarball (Ubuntu release, with vignettes)
         if: runner.os == 'Linux' && matrix.config.r == 'release'
-        run: R CMD build . --no-manual
-
-      - name: Build tarball (Ubuntu devel, no vignettes)
-        if: runner.os == 'Linux' && matrix.config.r == 'devel'
-        run: R CMD build . --no-build-vignettes --no-manual
+        run: R CMD build .
 
       - name: Upload built package
-        if: runner.os == 'Linux' && (matrix.config.r == 'release' || matrix.config.r == 'devel')
+        if: runner.os == 'Linux' && (matrix.config.r == 'release')
         uses: actions/upload-artifact@v4
         with:
           name: epiworldRcalibrate-built-package-${{ matrix.config.os }}-${{ matrix.config.r }}
