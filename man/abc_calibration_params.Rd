@@ -11,15 +11,15 @@ A named list with the following elements:
 \item{recovery_rate}{Posterior median of the recovery rate.}
 \item{transmission_prob}{Posterior median of the transmission probability.}
 \item{R0}{Basic reproduction number computed from posterior medians.}
-\item{contact_rate_ci}{95\\% credible interval for the contact rate.}
-\item{recovery_rate_ci}{95\\% credible interval for the recovery rate.}
-\item{transmission_prob_ci}{95\\% credible interval for the transmission probability.}
+\item{contact_rate_ci}{95 percent credible interval for the contact rate.}
+\item{recovery_rate_ci}{95 percent credible interval for the recovery rate.}
+\item{transmission_prob_ci}{95 percent credible interval for the transmission probability.}
 \item{calibration_time_seconds}{Total runtime of the ABC calibration (seconds).}
 \item{n_samples}{Number of MCMC samples used in calibration.}
 \item{burnin}{Number of burn-in iterations discarded.}
 \item{epsilon}{ABC tolerance parameter.}
 \item{seed}{Random seed used for reproducibility.}
-\item{posterior_samples}{Matrix of post–burn-in accepted parameter samples.}
+\item{posterior_samples}{Matrix of post-burn-in accepted parameter samples.}
 \item{acceptance_rate}{Acceptance rate of the ABC-MCMC algorithm (percent).}
 }
 }
@@ -33,11 +33,5 @@ abc_calibration_params
 \description{
 Results from Approximate Bayesian Computation (ABC) calibration of an
 SIR network model fitted to Utah COVID-19 incidence data.
-}
-\details{
-The calibration is performed using a likelihood-free Markov chain Monte Carlo
-(LFMCMC) algorithm implemented in the \pkg{epiworldRcalibrate} package.
-Summary statistics are computed from observed and simulated incidence curves,
-and parameter proposals are accepted based on a weighted kernel distance.
 }
 \keyword{datasets}
