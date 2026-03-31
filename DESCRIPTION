@@ -36,7 +36,7 @@ Suggests:
   epiworldR
 Config/testthat/edition: 3
 Imports:
-  reticulate (>= 1.2),
+  reticulate (>= 1.41),
   utils
 Depends: 
     R (>= 3.5)

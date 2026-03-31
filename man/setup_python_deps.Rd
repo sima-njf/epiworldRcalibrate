@@ -7,27 +7,25 @@
 setup_python_deps(force = FALSE)
 }
 \arguments{
-\item{force}{Logical; if \code{TRUE}, removes and recreates the virtual
-environment from scratch. Default is \code{FALSE}.}
+\item{force}{Logical; if \code{TRUE}, resets package-managed Python
+requirements from a fresh R session. Default is \code{FALSE}.}
 }
 \value{
 Invisibly returns \code{TRUE} on success.
 }
 \description{
-This function creates a dedicated conda environment (managed by
-\'reticulate\') and installs all
-required Python packages (numpy, scikit-learn, joblib, PyTorch). Run this
-once after installing the package. This is kept separate from model
-functions so that package installation never happens automatically during
-normal use.
+This function declares Python requirements through
+\'reticulate\' using \'py_require()\' (uv-backed in reticulate >= 1.41),
+then validates imports for all required modules (numpy, scikit-learn,
+joblib, PyTorch). Run this once after installing the package. This is kept
+separate from model functions so that package installation never happens
+automatically during normal use.
 }
 \details{
 The function performs the following steps:
 \enumerate{
-\item Ensures reticulate-managed Miniconda is available.
-\item Creates a conda environment named \code{"epiworldRcalibrate"}.
-\item Installs \code{numpy}, \code{scikit-learn}, \code{joblib}, and
-\code{torch} (CPU version) into that conda environment.
+\item Declares requirements with \code{reticulate::py_require()}.
+\item Initializes Python through reticulate's managed environment.
 \item Verifies all packages can be imported.
 }
 }

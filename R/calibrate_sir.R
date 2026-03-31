@@ -10,66 +10,6 @@
 .bilstm_env <- new.env(parent = emptyenv())
 .bilstm_env$model_loaded <- FALSE
 .bilstm_env$model_dir    <- NULL
-.bilstm_env$venv_name    <- "epiworldRcalibrate"
-
-#' @keywords internal
-.has_reticulate_conda <- function() {
-  tryCatch({
-    nzchar(reticulate::conda_binary("auto"))
-  }, error = function(e) FALSE)
-}
-
-#' @keywords internal
-.get_conda_env_names <- function() {
-  envs <- tryCatch(reticulate::conda_list(conda = "auto"),
-                   error = function(e) NULL)
-
-  if (is.null(envs) || !is.data.frame(envs) || !"name" %in% names(envs)) {
-    return(character())
-  }
-
-  unique(as.character(envs$name))
-}
-
-#' @keywords internal
-.ensure_reticulate_conda <- function() {
-  if (!.has_reticulate_conda()) {
-    message("Installing Miniconda via reticulate...")
-    reticulate::install_miniconda(force = FALSE, update = FALSE)
-  }
-  invisible(TRUE)
-}
-
-#' @keywords internal
-.activate_package_conda_env <- function(required = FALSE) {
-  envname <- .bilstm_env$venv_name
-  envs <- .get_conda_env_names()
-
-  if (!(envname %in% envs)) {
-    if (required) {
-      stop(
-        "Python environment '", envname, "' is not set up.\n",
-        "Run epiworldRcalibrate::setup_python_deps() first.",
-        call. = FALSE
-      )
-    }
-    return(FALSE)
-  }
-
-  tryCatch({
-    reticulate::use_condaenv(envname, required = required)
-    TRUE
-  }, error = function(e) {
-    if (required) {
-      stop(
-        "Could not activate Python environment '", envname, "': ",
-        conditionMessage(e),
-        call. = FALSE
-      )
-    }
-    FALSE
-  })
-}
 
 #' Ensure Python + necessary modules are ready (no auto-install)
 #'
@@ -80,25 +20,13 @@
 #'
 #' @keywords internal
 .ensure_python_ready <- function() {
-  envname <- .bilstm_env$venv_name
+  .assert_py_require_available()
 
-  # If Python is already initialized in this R session, ensure it's the
-  # package-managed environment.
   active_initialized <- tryCatch(reticulate::py_available(initialize = FALSE),
                                  error = function(e) FALSE)
-  if (active_initialized) {
-    active_py <- tryCatch(reticulate::py_config()$python,
-                          error = function(e) NULL)
-    if (is.null(active_py) || !nzchar(active_py) ||
-        !grepl(envname, active_py, fixed = TRUE)) {
-      stop(
-        "Python is already initialized with a different interpreter.\n",
-        "Please restart R and run epiworldRcalibrate::setup_python_deps() first.",
-        call. = FALSE
-      )
-    }
-  } else {
-    .activate_package_conda_env(required = TRUE)
+
+  if (!active_initialized) {
+    .configure_py_requirements(force = FALSE)
   }
 
   # Step 2: Verify Python is available
@@ -303,26 +231,95 @@ def cleanup_model():
   c("numpy", "sklearn", "joblib", "torch")
 }
 
+#' Return required Python package names for installation
+#' @keywords internal
+.required_python_packages <- function() {
+  c("numpy", "scikit-learn", "joblib", "torch")
+}
+
+#' @keywords internal
+.required_python_version <- function() {
+  ">=3.11,<3.12"
+}
+
+#' @keywords internal
+.supports_py_require <- function() {
+  has_fn <- tryCatch(exists("py_require", where = asNamespace("reticulate"),
+                            inherits = FALSE),
+                     error = function(e) FALSE)
+  if (!has_fn) {
+    return(FALSE)
+  }
+
+  tryCatch(utils::packageVersion("reticulate") >= "1.41.0",
+           error = function(e) FALSE)
+}
+
+#' @keywords internal
+.assert_py_require_available <- function() {
+  if (!isTRUE(.supports_py_require())) {
+    stop(
+      "epiworldRcalibrate requires reticulate >= 1.41 with py_require() support.\n",
+      "Please update reticulate and restart R.",
+      call. = FALSE
+    )
+  }
+
+  invisible(TRUE)
+}
+
+#' @keywords internal
+.configure_py_requirements <- function(force = FALSE) {
+  .assert_py_require_available()
+
+  action <- if (isTRUE(force)) "set" else "add"
+
+  tryCatch({
+    reticulate::py_require(
+      packages = .required_python_packages(),
+      python_version = .required_python_version(),
+      action = action
+    )
+    invisible(TRUE)
+  }, error = function(e) {
+    stop(
+      "Could not configure Python requirements with reticulate::py_require(): ",
+      conditionMessage(e),
+      "\nPlease restart R and run epiworldRcalibrate::setup_python_deps() again.",
+      call. = FALSE
+    )
+  })
+}
+
+#' @keywords internal
+.has_configured_py_requirements <- function() {
+  req <- tryCatch(reticulate::py_require(), error = function(e) NULL)
+  if (is.null(req) || is.null(req$packages)) {
+    return(FALSE)
+  }
+
+  required <- .required_python_packages()
+  all(required %in% as.character(req$packages))
+}
+
 #' Resolve the Python target used by package setup and diagnostics
 #' @keywords internal
 .resolve_python_target <- function() {
-  envname <- .bilstm_env$venv_name
+  py_ready <- tryCatch(
+    reticulate::py_available(initialize = FALSE),
+                       error = function(e) FALSE)
 
-  has_conda <- .has_reticulate_conda()
-  envs <- if (has_conda) .get_conda_env_names() else character()
-  env_exists <- envname %in% envs
-  env_activated <- FALSE
-
-  if (env_exists) {
-    env_activated <- isTRUE(tryCatch(
-      .activate_package_conda_env(required = FALSE),
+  if (!isTRUE(py_ready) && isTRUE(.supports_py_require()) &&
+      isTRUE(.has_configured_py_requirements())) {
+    py_ready <- tryCatch(
+      {
+        .configure_py_requirements(force = FALSE)
+        reticulate::py_available(initialize = TRUE)
+      },
       error = function(e) FALSE
-    ))
+    )
   }
 
-  py_ready <- tryCatch(
-    reticulate::py_available(initialize = isTRUE(env_activated)),
-                       error = function(e) FALSE)
   py_cfg <- if (py_ready) {
     tryCatch(reticulate::py_config(), error = function(e) NULL)
   } else {
@@ -343,8 +340,9 @@ def cleanup_model():
 
   python_source <- NULL
   if (isTRUE(py_ready)) {
-    if (!is.null(python_path) && grepl(envname, python_path, fixed = TRUE)) {
-      python_source <- "package_conda_env"
+    if (isTRUE(.supports_py_require()) &&
+        isTRUE(.has_configured_py_requirements())) {
+      python_source <- "reticulate_managed"
     } else {
       python_source <- "active_session"
     }
@@ -355,70 +353,9 @@ def cleanup_model():
     python_path = python_path,
     python_version = python_version,
     virtualenv = NULL,
-    conda_env = if (env_exists) envname else NULL,
+    conda_env = NULL,
     python_source = python_source
   )
-}
-
-#' Check package conda environment health
-#' @keywords internal
-.check_conda_env_health <- function(envname) {
-  if (!.has_reticulate_conda()) {
-    return(list(ok = FALSE, message = "reticulate conda is not available."))
-  }
-
-  if (!(envname %in% .get_conda_env_names())) {
-    return(list(ok = FALSE, message = "Conda environment does not exist."))
-  }
-
-  ok <- tryCatch({
-    reticulate::use_condaenv(envname, required = TRUE)
-    reticulate::py_available(initialize = TRUE)
-  }, error = function(e) FALSE)
-
-  if (!isTRUE(ok)) {
-    return(list(ok = FALSE,
-                message = "Could not initialize Python from conda environment."))
-  }
-
-  list(ok = TRUE, message = "Conda environment is healthy.")
-}
-
-#' Install Python packages with retry logic
-#' @keywords internal
-.install_python_packages <- function(packages,
-                                     envname,
-                                     method = "conda",
-                                     pip_options = NULL,
-                                     retries = 2) {
-  attempt <- 1L
-  last_error <- NULL
-
-  while (attempt <= retries) {
-    ok <- tryCatch({
-      reticulate::py_install(
-        packages,
-        envname = envname,
-        method = method,
-        pip = TRUE,
-        pip_options = pip_options
-      )
-      TRUE
-    }, error = function(e) {
-      last_error <<- conditionMessage(e)
-      FALSE
-    })
-
-    if (ok) return(invisible(TRUE))
-
-    if (attempt < retries) {
-      message("Install attempt ", attempt, " failed; retrying...")
-      Sys.sleep(2)
-    }
-    attempt <- attempt + 1L
-  }
-
-  stop(last_error, call. = FALSE)
 }
 
 #' Verify module imports using reticulate's active Python
@@ -468,25 +405,23 @@ def cleanup_model():
 
 #' Set up Python dependencies for epiworldRcalibrate
 #'
-#' This function creates a dedicated conda environment (managed by
-#' \'reticulate\') and installs all
-#' required Python packages (numpy, scikit-learn, joblib, PyTorch). Run this
-#' once after installing the package. This is kept separate from model
-#' functions so that package installation never happens automatically during
-#' normal use.
+#' This function declares Python requirements through
+#' \'reticulate\' using \'py_require()\' (uv-backed in reticulate >= 1.41),
+#' then validates imports for all required modules (numpy, scikit-learn,
+#' joblib, PyTorch). Run this once after installing the package. This is kept
+#' separate from model functions so that package installation never happens
+#' automatically during normal use.
 #'
-#' @param force Logical; if \code{TRUE}, removes and recreates the virtual
-#'   environment from scratch. Default is \code{FALSE}.
+#' @param force Logical; if \code{TRUE}, resets package-managed Python
+#'   requirements from a fresh R session. Default is \code{FALSE}.
 #'
 #' @return Invisibly returns \code{TRUE} on success.
 #'
 #' @details
 #' The function performs the following steps:
 #' \enumerate{
-#'   \item Ensures reticulate-managed Miniconda is available.
-#'   \item Creates a conda environment named \code{"epiworldRcalibrate"}.
-#'   \item Installs \code{numpy}, \code{scikit-learn}, \code{joblib}, and
-#'     \code{torch} (CPU version) into that conda environment.
+#'   \item Declares requirements with \code{reticulate::py_require()}.
+#'   \item Initializes Python through reticulate's managed environment.
 #'   \item Verifies all packages can be imported.
 #' }
 #'
@@ -501,134 +436,27 @@ def cleanup_model():
 #'
 #' @export
 setup_python_deps <- function(force = FALSE) {
+  .assert_py_require_available()
 
-  envname <- .bilstm_env$venv_name
-
-  .ensure_reticulate_conda()
-
-  # ---- Optionally remove existing environment ----
-  if (force) {
-    message("Removing existing conda environment '", envname, "'...")
-    envs <- .get_conda_env_names()
-    if (envname %in% envs) {
-      tryCatch(
-        reticulate::conda_remove(envname = envname, conda = "auto"),
-        error = function(e) {
-          stop(
-            "Could not remove conda environment '", envname, "': ",
-            conditionMessage(e),
-            call. = FALSE
-          )
-        }
-      )
-    }
-    # Reset internal state
-    .bilstm_env$model_loaded <- FALSE
-    .bilstm_env$model_dir <- NULL
-  }
-
-  # ---- Create conda environment if needed ----
-  envs <- .get_conda_env_names()
-  if (!(envname %in% envs)) {
-    message("Creating conda environment '", envname, "'...")
-    tryCatch({
-      reticulate::conda_create(
-        envname = envname,
-        packages = c("python=3.11", "pip"),
-        conda = "auto"
-      )
-    }, error = function(e) {
-      stop(
-        "Failed to create conda environment '", envname, "': ",
-        conditionMessage(e),
-        call. = FALSE
-      )
-    })
-  } else {
-    message("Conda environment '", envname, "' already exists.")
-  }
-
-  health <- .check_conda_env_health(envname)
-  if (!health$ok) {
+  if (isTRUE(force) && isTRUE(tryCatch(reticulate::py_available(initialize = FALSE),
+                                       error = function(e) FALSE))) {
     stop(
-      "Conda environment '", envname, "' is not healthy: ", health$message,
-      "\nTry: setup_python_deps(force = TRUE)",
+      "`force = TRUE` requires a fresh R session before Python initializes.\n",
+      "Please restart R and rerun setup_python_deps(force = TRUE).",
       call. = FALSE
     )
   }
 
-  # Bind reticulate to the package conda env for this session
-  tryCatch({
-    reticulate::use_condaenv(envname, required = TRUE)
-  }, error = function(e) {
+  message("Configuring Python requirements via reticulate::py_require() (uv-backed)...")
+  .configure_py_requirements(force = force)
+
+  if (!isTRUE(tryCatch(reticulate::py_available(initialize = TRUE),
+                       error = function(e) FALSE))) {
     stop(
-      "Could not activate conda environment '", envname, "': ",
-      conditionMessage(e), "\n",
-      "If Python was already initialized with another interpreter, restart R and run setup_python_deps() again.",
+      "Python could not be initialized after configuring requirements.\n",
+      "Try restarting R and run setup_python_deps(force = TRUE).",
       call. = FALSE
     )
-  })
-
-  # ---- Define required packages ----
-  required_packages <- list(
-    list(check_name = "numpy",   install_name = "numpy"),
-    list(check_name = "sklearn", install_name = "scikit-learn"),
-    list(check_name = "joblib",  install_name = "joblib"),
-    list(check_name = "torch",   install_name = "torch")
-  )
-
-  # ---- Check what is already installed ----
-  module_check <- .verify_python_imports(
-    modules = vapply(required_packages, function(x) x$check_name, character(1))
-  )
-
-  needs_install <- character()
-  for (pkg in required_packages) {
-    available <- identical(module_check$details[[pkg$check_name]]$status, "ok")
-
-    if (!available) {
-      message("Package '", pkg$check_name, "' not found, will install.")
-      needs_install <- c(needs_install, pkg$install_name)
-    } else {
-      message("Package '", pkg$check_name, "' already installed.")
-    }
-  }
-
-  # ---- Install missing packages ----
-  if (length(needs_install) > 0) {
-    # Install non-torch packages first
-    non_torch <- setdiff(needs_install, "torch")
-    if (length(non_torch) > 0) {
-      message("Installing: ", paste(non_torch, collapse = ", "), " ...")
-      tryCatch({
-        .install_python_packages(non_torch,
-                                 envname = envname,
-                                 method = "conda",
-                                 retries = 2)
-      }, error = function(e) {
-        stop("Failed to install packages ",
-             paste(non_torch, collapse = ", "), ": ",
-             conditionMessage(e), call. = FALSE)
-      })
-    }
-
-    # Install PyTorch with CPU-only version
-    if ("torch" %in% needs_install) {
-      message("Installing PyTorch (CPU version)...")
-      tryCatch({
-        .install_python_packages(
-          "torch",
-          envname = envname,
-          method = "conda",
-          pip_options = c("--index-url",
-                          "https://download.pytorch.org/whl/cpu"),
-          retries = 2
-        )
-      }, error = function(e) {
-        stop("Failed to install PyTorch: ", conditionMessage(e),
-             call. = FALSE)
-      })
-    }
   }
 
   # ---- Verify all packages can be imported ----
@@ -791,8 +619,8 @@ check_model_status <- function() {
 
 #' Check Python and package installation status
 #'
-#' Reports whether Python is available, which package-managed conda
-#' environment is in use,
+#' Reports whether Python is available, which package-managed Python target is
+#' in use,
 #' and whether each required Python package is importable.
 #'
 #' @return A list with Python runtime details and package status.
@@ -859,11 +687,10 @@ cleanup_model <- function() {
 #' @keywords internal
 .onAttach <- function(libname, pkgname) {
 
-  # Check if the package conda environment exists
-  envname <- .bilstm_env$venv_name
-  envs <- if (.has_reticulate_conda()) .get_conda_env_names() else character()
+  deps_ready <- isTRUE(.supports_py_require()) &&
+    isTRUE(.has_configured_py_requirements())
 
-  if (!(envname %in% envs)) {
+  if (!deps_ready) {
     packageStartupMessage(
       "epiworldRcalibrate: Python dependencies are not set up yet.\n",
       "Run this once to install them:\n\n",

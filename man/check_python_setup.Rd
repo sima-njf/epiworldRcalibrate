@@ -10,7 +10,7 @@ check_python_setup()
 A list with Python runtime details and package status.
 }
 \description{
-Reports whether Python is available, which package-managed conda
-environment is in use,
+Reports whether Python is available, which package-managed Python target is
+in use,
 and whether each required Python package is importable.
 }
