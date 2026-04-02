@@ -1,0 +1,406 @@
+---
+title: "Getting Started with epiworldRcalibrate"
+subtitle: "Installation and Setup Guide"
+author: "Sima Najafzadehkhoei"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-title: "Contents"
+    number-sections: true
+    theme: cosmo
+    code-tools: true
+    code-copy: true
+    highlight-style: github
+    df-print: kable
+execute:
+  eval: false
+  echo: true
+  warning: false
+  message: false
+---
+
+## Overview
+
+**epiworldRcalibrate** provides fast, data-driven calibration of SIR epidemic
+parameters using a pretrained Bidirectional LSTM (BiLSTM) neural network.
+Given a 61-day incidence time series, the package estimates:
+
+- `ptran` — transmission probability per contact
+- `crate` — contact rate
+- `R0` — basic reproduction number
+
+The package is fully integrated with
+[epiworldR](https://github.com/UofUEpiBio/epiworldR) and requires **no
+manual Python setup** — everything is handled automatically through
+`reticulate`.
+
+::: {.callout-note}
+## Why Python?
+
+The calibration model is a PyTorch BiLSTM neural network trained in Python.
+R cannot run PyTorch natively, so the package uses
+[`reticulate`](https://rstudio.github.io/reticulate/) to delegate inference
+to a managed Python environment. You don't need to install Python yourself —
+`reticulate >= 1.41` uses `uv` to create and manage a dedicated virtual
+environment automatically.
+:::
+
+---
+
+## Prerequisites
+
+Before installing `epiworldRcalibrate`, make sure you have the following:
+
+| Requirement | Version | Notes |
+|---|---|---|
+| R | ≥ 4.1 | [Download R](https://cran.r-project.org/) |
+| `devtools` | any | For GitHub installation |
+| `reticulate` | **≥ 1.41** | Must support `py_require()` |
+| `epiworldR` | any | For running SIR simulations |
+
+Install or update the required R packages first:
+
+```{r}
+#| label: prerequisites
+
+# Install devtools if needed
+if (!requireNamespace("devtools", quietly = TRUE))
+  install.packages("devtools")
+
+# reticulate >= 1.41 is REQUIRED — older versions lack py_require()
+install.packages("reticulate")
+
+# epiworldR for running SIR simulations
+install.packages("epiworldR")
+```
+
+---
+
+## Installation
+
+Install `epiworldRcalibrate` directly from GitHub:
+
+```{r}
+#| label: install
+
+devtools::install_github("sima-njf/epiworldRcalibrate")
+```
+
+---
+
+## Python Setup
+
+### Why this step is needed
+
+When you load `epiworldRcalibrate`, it checks whether Python dependencies have
+been configured. If they haven't, you will see this startup message:
+
+```
+epiworldRcalibrate: Python dependencies are not set up yet.
+Run this once to install them:
+
+  epiworldRcalibrate::setup_python_deps()
+```
+
+The `setup_python_deps()` function configures a managed Python environment with
+the required packages:
+
+- `numpy` — array operations
+- `scikit-learn` — data scaling
+- `joblib` — model serialization
+- `torch` — the PyTorch deep learning backend
+
+This step is intentionally **not automatic** — silently installing Python
+packages during normal package use would be intrusive and could break other
+Python environments on your system.
+
+::: {.callout-important}
+## Run this step once per machine
+
+`setup_python_deps()` only needs to be called **once** after first installing
+the package. In subsequent R sessions, Python will be initialized automatically.
+:::
+
+### Choosing the right argument
+
+Use `force = TRUE` the **first time** you set up on a new machine. Use
+`force = FALSE` (the default) in all subsequent sessions.
+
+::: {.panel-tabset}
+
+## First-time setup
+
+Run this **once**, on a fresh R session, the very first time you install the
+package on a machine:
+
+```{r}
+#| label: setup-first-time
+
+library(epiworldRcalibrate)
+
+# First time ever: Python is not yet configured — use force = TRUE
+setup_python_deps(force = TRUE)
+```
+
+**Why `force = TRUE`?** This resets Python requirements from scratch, which is
+needed when no managed environment exists yet. It declares all required
+packages to `reticulate::py_require()`, which then resolves and installs them
+into a dedicated virtual environment backed by `uv`.
+
+::: {.callout-warning}
+`force = TRUE` requires that Python has **not yet been initialized** in the
+current R session. If Python was already loaded (e.g., you ran some other
+`reticulate` code first), you'll see an error asking you to restart R. Just
+restart R and run `setup_python_deps(force = TRUE)` again.
+:::
+
+## Returning users
+
+In any subsequent R session (after the first-time setup), use `force = FALSE`
+or simply omit the argument:
+
+```{r}
+#| label: setup-returning
+
+library(epiworldRcalibrate)
+
+# All future sessions: verify packages without resetting
+setup_python_deps(force = FALSE)
+# or equivalently:
+setup_python_deps()
+```
+
+**Why `force = FALSE`?** This verifies that all required packages are importable
+without touching the existing environment. It's a lightweight check that
+confirms your setup is still intact.
+
+:::
+
+### Expected output
+
+When setup completes successfully, you will see:
+
+```
+Configuring Python requirements via reticulate::py_require() (uv-backed)...
+Verifying installation...
+[OK]   numpy v1.26.4
+[OK]   sklearn v1.4.2
+[OK]   joblib v1.4.0
+[OK]   torch v2.3.0
+
+Python setup complete! You can now use the package normally.
+Example:
+  epiworldRcalibrate::init_bilstm_model()
+```
+
+---
+
+## Loading the Model
+
+After Python is set up, load the pretrained BiLSTM model into memory. Do this
+once per R session, before running any calibrations:
+
+```{r}
+#| label: load-model
+
+init_bilstm_model()
+```
+
+```
+BiLSTM model loaded successfully.
+```
+
+The model and its scalers are bundled inside the package — no external
+downloads are needed. You can verify the model status at any time:
+
+```{r}
+#| label: check-status
+
+check_model_status()
+```
+
+---
+
+## Running a Calibration
+
+### Simulate data with epiworldR
+
+```{r}
+#| label: simulate
+#| eval: false
+
+library(epiworldR)
+library(epiworldRcalibrate)
+
+# Simulate an SIR model
+m <- ModelSIRCONN(
+  name              = "sim",
+  n                 = 8000,
+  prevalence        = 0.01,
+  contact_rate      = 3,
+  transmission_rate = 0.25,
+  recovery_rate     = 0.1
+)
+
+run(m, ndays = 60)
+
+# Extract the 61-day incidence time series (days 0–60)
+inc <- plot_incidence(m)[, 1]
+```
+
+### Calibrate SIR parameters
+
+Pass the incidence vector, population size, and recovery rate to
+`calibrate_sir()`:
+
+```{r}
+#| label: calibrate
+#| eval: false
+
+result <- calibrate_sir(
+  daily_cases     = inc,
+  population_size = 8000,
+  recovery_rate   = 0.1
+)
+
+print(result)
+```
+
+```
+    ptran     crate        R0
+0.2489123 3.0214567 0.7554231
+```
+
+::: {.callout-note}
+## Input requirements
+
+- `daily_cases` must be a numeric vector of **exactly 61 values** (days 0
+  through 60), all non-negative.
+- `population_size` must be a single positive number.
+- `recovery_rate` must be a single positive number.
+:::
+
+### One-step convenience wrapper
+
+`calibrate_sir()` automatically loads the model if it hasn't been loaded yet
+(`auto_init = TRUE` by default), so you can skip `init_bilstm_model()` if you
+prefer a single-call workflow:
+
+```{r}
+#| label: one-step
+#| eval: false
+
+result <- calibrate_sir(
+  daily_cases     = inc,
+  population_size = 8000,
+  recovery_rate   = 0.1
+)
+```
+
+---
+
+## Diagnostics and Utilities
+
+### Check Python setup
+
+```{r}
+#| label: check-python
+
+check_python_setup()
+```
+
+Reports Python version, path, and the status of each required package.
+
+### Check model status
+
+```{r}
+#| label: check-model
+
+check_model_status()
+```
+
+Returns a list with `loaded`, `model_directory`, and `python_config`.
+
+### Free memory
+
+```{r}
+#| label: cleanup
+
+cleanup_model()
+```
+
+Unloads the model from memory. Useful in long-running sessions or when
+switching between model directories.
+
+---
+
+## Quick Reference
+
+| Function | When to call |
+|---|---|
+| `setup_python_deps(force = TRUE)` | **First time only** — fresh machine, first install |
+| `setup_python_deps(force = FALSE)` | Any subsequent session, to verify setup |
+| `init_bilstm_model()` | Once per R session, before predicting |
+| `calibrate_sir(...)` | Each time you want parameter estimates |
+| `check_python_setup()` | Diagnose Python or package issues |
+| `check_model_status()` | Check if model is loaded and where |
+| `cleanup_model()` | Free memory when done |
+
+---
+
+## Troubleshooting
+
+### "reticulate >= 1.41 required"
+
+```
+Error: epiworldRcalibrate requires reticulate >= 1.41 with py_require() support.
+Please update reticulate and restart R.
+```
+
+**Fix:** Update reticulate and restart R:
+
+```{r}
+install.packages("reticulate")
+```
+
+### "force = TRUE requires a fresh R session"
+
+```
+Error: `force = TRUE` requires a fresh R session before Python initializes.
+Please restart R and rerun setup_python_deps(force = TRUE).
+```
+
+**Fix:** Restart R, then call `setup_python_deps(force = TRUE)` before running
+any other code.
+
+### "daily_cases must have length 61"
+
+```
+Error: daily_cases must have length 61
+```
+
+**Fix:** Ensure your incidence vector spans exactly days 0 through 60 (61
+values). If your simulation ran for fewer days, pad with zeros or extend it.
+
+### Packages fail to import after setup
+
+```
+[FAIL] torch: No module named 'torch'
+```
+
+**Fix:** Run `setup_python_deps(force = TRUE)` in a fresh R session. If the
+problem persists, check that your internet connection is active (packages are
+downloaded on first setup).
+
+---
+
+## Further Resources
+
+- **Package repository:** <https://github.com/sima-njf/epiworldRcalibrate>
+- **Package website:** <https://sima-njf.github.io/epiworldRcalibrate/>
+- **epiworldR:** <https://github.com/UofUEpiBio/epiworldR>
+- **reticulate docs:** <https://rstudio.github.io/reticulate/>
+- **Reference paper:** Najafzadehkhoei, Vega Yon, Meyer and Modenesi (2025),
+  [arXiv:2509.07013](https://doi.org/10.48550/arXiv.2509.07013)

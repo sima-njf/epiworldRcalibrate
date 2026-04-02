@@ -1,51 +1,56 @@
 url: https://sima-njf.github.io/epiworldRcalibrate/
-
 template:
   bootstrap: 5
   bslib:
     preset: bootstrap
-
 build:
   new_process: false
-
-# Tell pkgdown NOT to build articles from vignettes
 articles: false
-
 navbar:
   title: "epiworldRcalibrate"
   left:
     - text: "Get Started"
-      href: articles/calibration_explanation.html
+      href: articles/Installation_guide.html
     - text: "Articles"
       menu:
+        - text: "Installation Guide"
+          href: articles/Installation_guide.html
         - text: "Introduction to Calibration"
-          href: articles/calibration_explanation.html
+          href: articles/Introduction_to_LSTM_Calibration.html
         - text: "Real Data Example"
-          href: articles/Real_data.html
+          href: articles/Real_data_example.html
         - text: "ABC + BiLSTM Calibration"
-          href: articles/ABC_LSTM.html
+          href: articles/ABC_LSTM_Comparison.html
     - text: "Reference"
       href: reference/index.html
   right:
     - icon: fab fa-github
       href: "https://github.com/sima-njf/epiworldRcalibrate"
       aria-label: "GitHub"
-
 home:
   title: "BiLSTM Parameter Calibration for epiworldR"
   description: >
     Fast, deep-learning-based calibration of SIR model parameters
     using Approximate Bayesian Computation (ABC) and BiLSTM neural networks.
-
 authors:
   sima-njf:
     href: "https://github.com/sima-njf"
-
+  "George Vega Yon":
+    href: "https://github.com/gvegayon"
+  "Bernardo Modenesi":
+    href: "https://github.com/bmodenesi"
+  "Jake Wagoner":
+    href: "https://github.com/JakeWags"
 footer:
   structure:
     left: [developed_by, built_with]
     right: [package]
   components:
-    developed_by: "Developed by [Sima Najafzadehkhoei](https://github.com/sima-njf)"
+    developed_by: >
+      Developed by
+      [Sima Najafzadehkhoei](https://github.com/sima-njf),
+      [George Vega Yon](https://github.com/gvegayon),
+      [Jake Wagoner](https://github.com/JakeWags), and
+      [Bernardo Modenesi](https://github.com/bmodenesi).
     built_with: "Built with [pkgdown](https://pkgdown.r-lib.org/)"
     package: "epiworldRcalibrate"
