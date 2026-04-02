@@ -2,7 +2,7 @@ URL: https://sima-njf.github.io/epiworldRcalibrate/, https://github.com/sima-njf
 BugReports: https://github.com/sima-njf/epiworldRcalibrate/issues
 Package: epiworldRcalibrate
 Title: Fast and Effortless Calibration of Agent-Based Models using Machine Learning
-Version: 0.1.1
+Version: 0.1.3
 Authors@R: c(
   person(
     "Sima", "Najafzadehkhoei", role=c("aut","cre"), email="sima.njf@utah.edu",
