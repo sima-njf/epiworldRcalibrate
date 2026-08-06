@@ -2,6 +2,16 @@
 # epiworldRcalibrate
 
 <!-- badges: start -->
+
+<!-- how-to-cite -->
+> [!NOTE]
+> **How to cite epiworldRcalibrate.** If you use **epiworldRcalibrate** in published work, please cite it:
+>
+> Najafzadehkhoei S, Vega Yon GG, Modenesi B, Meyer D (2025). Machine Generalize Learning in Agent-Based Models. *arXiv*:2509.07013. doi:[10.48550/arXiv.2509.07013](https://doi.org/10.48550/arXiv.2509.07013)
+>
+> Run `citation("epiworldRcalibrate")` in R for the BibTeX entry.
+<!-- how-to-cite -->
+
 <a href="https://github.com/EpiForeSITE"><img src="https://github.com/EpiForeSITE/software/raw/e82ed88f75e0fe5c0a1a3b38c2b94509f122019c/docs/assets/foresite-software-badge.svg"></a>
 <a href="https://github.com/sima-njf/epiworldRcalibrate/actions/workflows/r-cmd-check.yml"><img src="https://github.com/sima-njf/epiworldRcalibrate/actions/workflows/r-cmd-check.yml/badge.svg"></a>
 <a href="https://github.com/sima-njf/epiworldRcalibrate/blob/main/LICENSE.md"><img src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
