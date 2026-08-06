@@ -1,4 +1,7 @@
 #' @keywords internal
+#' @section How to cite:
+#' If you use \pkg{epiworldRcalibrate} in published work, please cite it. Run
+#' \code{citation("epiworldRcalibrate")} in R for the full entry.
 "_PACKAGE"
 
 # =============================================================================
