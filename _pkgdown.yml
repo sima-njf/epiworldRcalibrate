@@ -33,14 +33,15 @@ home:
     Fast, deep-learning-based calibration of SIR model parameters
     using Approximate Bayesian Computation (ABC) and BiLSTM neural networks.
 authors:
-  sima-njf:
+  "Sima Najafzadehkhoei":
     href: "https://github.com/sima-njf"
   "George Vega Yon":
-    href: "https://github.com/gvegayon"
-  "Bernardo Modenesi":
-    href: "https://github.com/bmodenesi"
+    href: "https://ggvy.cl"
+    html: "<img src='https://ggvy.cl/img/george-g-vega-yon-university-of-utah.webp' width=72 alt=''>"
   "Jake Wagoner":
     href: "https://github.com/JakeWags"
+  "Bernardo Modenesi":
+    href: "https://github.com/modenesi"
 footer:
   structure:
     left: [developed_by, built_with]
