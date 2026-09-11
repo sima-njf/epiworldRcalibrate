@@ -10,3 +10,4 @@
 ^.devcontainer$
 ^inst/vignettes$
 ^data-raw$
+^CITATION\.cff$
