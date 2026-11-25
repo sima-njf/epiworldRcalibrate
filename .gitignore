@@ -6,3 +6,8 @@ inst/doc
 /doc/
 /Meta/
 .vscode
+*.Rcheck/
+epiworldRcalibrate_*.tar.gz
+__pycache__/
+vignettes/*.html
+vignettes/cache/

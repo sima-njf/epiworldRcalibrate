@@ -2,7 +2,7 @@ URL: https://sima-njf.github.io/epiworldRcalibrate/, https://github.com/sima-njf
 BugReports: https://github.com/sima-njf/epiworldRcalibrate/issues
 Package: epiworldRcalibrate
 Title: Fast and Effortless Calibration of Agent-Based Models using Machine Learning
-Version: 0.1.3
+Version: 1.0.0
 Authors@R: c(
   person(
     "Sima", "Najafzadehkhoei", role=c("aut","cre"), email="sima.njf@utah.edu",
@@ -22,25 +22,45 @@ Authors@R: c(
          comment = "Award number 1U01CK000585; 75D30121F00003")
   )
 Description:
-  Provides tools and pre-trained Machine Learning [ML] models for
-  calibration of Agent-Based Models [ABMs] built with the R package
-  'epiworldR'. Implements methods described in Najafzadehkhoei, Vega Yon,
-  Modenesi, and Meyer (2025) <doi:10.48550/arXiv.2509.07013>. Users can
-  automatically calibrate ABMs in seconds with pre-trained ML models,
-  effectively focusing on simulation rather than calibration. Bridges a gap
-  by allowing public health practitioners to run their own ABMs without the
-  advanced technical expertise often required by calibration.
+  Calibrates agent-based epidemic models built with the R package
+  'epiworldR' (SEIR and SIR) from daily counts of new infections, cases or
+  hospital admissions. Ships DeepIMC, a trained bidirectional LSTM that
+  calibrates a window of 15 to 365 days from any part of an epidemic in well
+  under a second, with a 95% range for the basic reproduction number R0, and
+  the four standard calibration methods it is compared with (ABC-SMC,
+  ABC-MCMC, differential evolution and Nelder-Mead), all through one
+  function. Whole curves can be smoothed and split where their growth rate
+  changes (segmented regression), each part calibrated on its own, and the
+  epidemic the estimates imply run again with the agent-based model; a part
+  can be run on past a known intervention to give the cases expected without
+  it. Includes the real epidemic data of the paper (COVID-19, influenza, SARS,
+  Ebola, MERS, smallpox and measles) with dated interventions. Implements the
+  methods described in Najafzadehkhoei, Vega Yon, Modenesi and Meyer (2025)
+  <doi:10.48550/arXiv.2509.07013>.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
-Suggests:
-  testthat (>= 3.0.0),
-  epiworldR
-Config/testthat/edition: 3
+Depends:
+    R (>= 4.1)
 Imports:
-  reticulate (>= 1.41),
-  utils
-Depends: 
-    R (>= 3.5)
+    epiworldR,
+    graphics,
+    grDevices,
+    jsonlite,
+    MASS,
+    parallel,
+    reticulate (>= 1.41),
+    segmented,
+    stats,
+    utils
+Suggests:
+    data.table,
+    DEoptim,
+    DEoptimR,
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+VignetteBuilder: knitr
+Config/testthat/edition: 3
 LazyData: true

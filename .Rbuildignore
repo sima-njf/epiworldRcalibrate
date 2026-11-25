@@ -7,6 +7,10 @@
 ^Makefile$
 ^\.github$
 ^docs$
-^.devcontainer$
-^inst/vignettes$
+^\.devcontainer$
 ^data-raw$
+^README\.Rmd$
+^vignettes/.*\.Rmd\.orig$
+^vignettes/precompute\.R$
+^.*\.Rcheck$
+^epiworldRcalibrate_.*\.tar\.gz$
