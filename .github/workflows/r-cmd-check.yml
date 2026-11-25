@@ -2,7 +2,7 @@ name: R-CMD-check
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, final-version]
   pull_request:
     branches: [main, master]
 

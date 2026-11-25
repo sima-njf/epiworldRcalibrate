@@ -22,7 +22,7 @@ test:
 
 # Run example analysis
 example:
-	Rscript -e 'rmarkdown::render("vignettes/calibration_explanation.Rmd")'
+	Rscript vignettes/precompute.R
 
 # Clean build artifacts
 clean:
@@ -44,7 +44,7 @@ help:
 	@echo "  man         - Generate documentation"
 	@echo "  docs        - Generate documentation (alias for man)"
 	@echo "  test        - Run package tests"
-	@echo "  example     - Run example analysis"
+	@echo "  example     - Knit the vignettes from vignettes/*.Rmd.orig (needs Python)"
 	@echo "  clean       - Remove build artifacts"
 	@echo "  info        - Show package info"
 	@echo "  help        - Show this help"

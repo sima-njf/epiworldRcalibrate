@@ -5,7 +5,7 @@ on:
   pull_request:
     branches: [main, master]
   push:
-    branches: [main, master]
+    branches: [main, master, final-version]
 
 env:
   GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -62,70 +62,38 @@ jobs:
           )
 
           library(epiworldRcalibrate)
-          model_path <- system.file("models", "model4_bilstm.pt", package = "epiworldRcalibrate")
-          if (!nzchar(model_path) || !file.exists(model_path)) {
-            stop("Bundled model file was not found after install")
+          options(warn = 1)
+
+          # The shipped DeepIMC networks
+          for (m in c("seir_window", "sir_window")) {
+            nets <- list.files(system.file("models", m, package = "epiworldRcalibrate"), pattern = "^model\\.pt$",
+                               recursive = TRUE)
+            if (length(nets) != 5) stop("Expected 5 networks in models/", m, ", found ", length(nets))
           }
 
-          # Ensure package-managed Python env is actually provisioned
-          epiworldRcalibrate::setup_python_deps(force = FALSE)
+          # A short simulated SIR window
+          sim <- epiworldR::ModelSIRCONN("smoke", n = 5000, prevalence = 0.002, contact_rate = 3,
+                                         transmission_rate = 0.1, recovery_rate = 0.15)
+          epiworldR::verbose_off(sim)
+          epiworldR::run(sim, ndays = 41, seed = 3)
+          tr <- epiworldR::get_hist_transition_matrix(sim)
+          tr <- tr[tr$state_from == "Susceptible" & tr$state_to == "Infected", ]
+          y <- tr$counts[match(1:40, tr$date)]
+          y[is.na(y)] <- 0
 
-          info <- epiworldRcalibrate::check_python_setup()
-          required_fields <- c("python_available", "python_path", "packages")
-          if (!all(required_fields %in% names(info))) {
-            stop("check_python_setup() output is missing expected fields")
-          }
+          # A standard method (no Python)
+          nm <- calibrate_window(y, model = "SIR", method = "NELDERMEAD", n = 5000, recov = 0.15,
+                                 settings = list(maxit = 30))
+          if (!is.finite(nm$estimate[["R0"]])) stop("Nelder-Mead returned a non-finite R0")
 
-          required_modules <- c("numpy", "sklearn", "joblib", "torch")
-          missing_modules <- required_modules[!vapply(
-            required_modules,
-            function(pkg) {
-              pkg_info <- info$packages[[pkg]]
-              !is.null(pkg_info) && isTRUE(pkg_info$available)
-            },
-            logical(1)
-          )]
-          if (length(missing_modules) > 0) {
-            stop(
-              "Required Python modules not available after setup: ",
-              paste(missing_modules, collapse = ", ")
-            )
-          }
-
-          init_ok <- tryCatch(
-            {
-              epiworldRcalibrate::init_bilstm_model(force_reload = TRUE)
-              TRUE
-            },
-            error = function(e) {
-              message("init_bilstm_model() failed: ", conditionMessage(e))
-              FALSE
-            }
-          )
-          if (!isTRUE(init_ok)) {
-            stop("BiLSTM initialization failed after dependency setup")
-          }
-
-          # End-to-end inference smoke check
-          set.seed(1)
-          daily_cases <- as.numeric(round(runif(61, min = 0, max = 100)))
-          inference <- epiworldRcalibrate::estimate_sir_parameters(
-            daily_cases = daily_cases,
-            population_size = 100000,
-            recovery_rate = 0.2
-          )
-
-          expected_names <- c("ptran", "crate", "R0")
-          if (!is.numeric(inference) || !identical(names(inference), expected_names)) {
-            stop("estimate_sir_parameters() did not return expected named numeric output")
-          }
-          if (any(!is.finite(inference))) {
-            stop("estimate_sir_parameters() returned non-finite values")
-          }
+          # DeepIMC (reticulate provisions Python with torch the first time)
+          fit <- calibrate_window(y, model = "SIR", method = "DeepIMC", n = 5000, recov = 0.15)
+          if (!is.finite(fit$estimate[["R0"]]) || any(!is.finite(fit$intervals["R0", ])))
+            stop("DeepIMC returned a non-finite R0 or range")
+          fit_seir <- calibrate_window(y, model = "SEIR", method = "DeepIMC", known = known_values("COVID-19", "SEIR", n = 5000))
+          if (!is.finite(fit_seir$estimate[["R0"]])) stop("DeepIMC (SEIR) returned a non-finite R0")
 
           cat("Installed successfully from:", normalizePath(staged_root, winslash = "/"), "\n")
-          cat("Model file path:", normalizePath(model_path, winslash = "/"), "\n")
-          cat("python_available:", info$python_available, "\n")
-          cat("python_path:", info$python_path, "\n")
-          cat("bilstm_initialized:", init_ok, "\n")
-          cat("inference_output:", paste(sprintf("%s=%.6f", names(inference), inference), collapse = ", "), "\n")
+          cat("Nelder-Mead R0:", nm$estimate[["R0"]], "\n")
+          cat("DeepIMC R0 (SIR):", fit$estimate[["R0"]], "range", fit$intervals["R0", ], "\n")
+          cat("DeepIMC R0 (SEIR):", fit_seir$estimate[["R0"]], "\n")

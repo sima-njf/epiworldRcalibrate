@@ -1,0 +1,276 @@
+---
+title: "Calibrating a window with DeepIMC and the standard methods"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Calibrating a window with DeepIMC and the standard methods}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+# This file is knitted by vignettes/precompute.R (it runs DeepIMC in Python and the standard methods for about half
+# an hour); the package ships the knitted calibrating-windows.Rmd, so building the package runs no code.
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.path = "figures/windows-", dev = "png", dpi = 110,
+                      fig.width = 8, fig.height = 5, out.width = "100%",
+                      cache = TRUE, cache.path = file.path(Sys.getenv("VIGNETTE_CACHE", "cache"), "windows/"))
+options(width = 110)
+```
+
+This vignette shows how to calibrate a *window* of daily counts, a run of
+days from any part of an epidemic, with the five methods of the package:
+
+| Method | `method =` | What it does | Time per window |
+|---|---|---|---|
+| DeepIMC | `"DeepIMC"` | a trained bidirectional LSTM reads the window once | under a second |
+| ABC-SMC | `"ABC_SMC"` | approximate Bayesian computation, sequential Monte Carlo | minutes |
+| ABC-MCMC | `"ABC_MCMC"` | approximate Bayesian computation, Markov chain Monte Carlo | minutes |
+| Differential evolution | `"DE"` | global optimizer (`DEoptim`) of the squared error | minutes |
+| Nelder-Mead | `"NELDERMEAD"` | local optimizer (`optim`) of the squared error | seconds |
+
+All five work for the SEIR and the SIR model of `epiworldR`
+(`ModelSEIRCONN` and `ModelSIRCONN`). We simulate epidemics whose parameters
+we know, so that we can see how close each method comes. The vignettes
+`vignette("real-curves")` and `vignette("interventions")` use real data.
+
+## Setup
+
+```{r packages, cache = FALSE}
+library(epiworldRcalibrate)
+library(epiworldR)
+```
+
+DeepIMC runs its networks in Python (through `reticulate`). The package
+declares the Python packages it needs (torch, numpy, pandas, scikit-learn,
+joblib), and `reticulate` sets them up the first time DeepIMC is used. To use a
+Python you already have, set `RETICULATE_PYTHON` before loading the package:
+
+```{r python, eval = FALSE}
+Sys.setenv(RETICULATE_PYTHON = "/path/to/python")   # optional
+```
+
+The four standard methods need no Python; differential evolution needs the
+package `DEoptim`.
+
+## What a method needs: the counts and the known values
+
+A window is the daily number of new infectious people (new cases, or new
+hospital admissions) over 15 to 365 days. Besides the counts, every method is
+given the values that are known about the disease and the population:
+
+* `n`: the population (or the *effective* population the counts come from);
+* `recov`: the recovery rate, 1 / the infectious period in days;
+* `incub`: the latent (incubation) period in days, SEIR only.
+
+The methods then estimate the basic reproduction number R0 and the state of
+the epidemic on the first day of the window: the shares of the population
+exposed (SEIR), infectious and recovered. For a real disease,
+`known_values()` gives the values used in the paper:
+
+```{r known}
+known_values("COVID-19", "SEIR")
+known_values("COVID-19", "SIR")
+```
+
+## A simulated SEIR epidemic
+
+We run the agent-based model once with known parameters: 10,000 people,
+R0 = 2.5, an infectious period of 7 days and a latent period of 5 days, and 8
+contacts per day (so the transmission probability is 2.5 / 7 / 8).
+
+```{r simulate-seir}
+simulate_seir <- function(n, R0, recov, incub, crate, prevalence = 0.002, days = 150, seed = 1) {
+  m <- ModelSEIRCONN("simulated", n = n, prevalence = prevalence, contact_rate = crate,
+                     transmission_rate = R0 * recov / crate, incubation_days = incub, recovery_rate = recov)
+  verbose_off(m)
+  run(m, ndays = days, seed = seed)
+  tr <- get_hist_transition_matrix(m)
+  tr <- tr[tr$state_from == "Exposed" & tr$state_to == "Infected", ]
+  new <- tr$counts[match(seq_len(days), tr$date)]
+  new[is.na(new)] <- 0
+  list(new = new, totals = get_hist_total(m))
+}
+truth <- list(n = 10000, R0 = 2.5, recov = 1 / 7, incub = 5, crate = 8)
+sim <- simulate_seir(truth$n, truth$R0, truth$recov, truth$incub, truth$crate)
+```
+
+We calibrate the 60 days from day 31 to day 90, and keep the next 14 days to
+see whether the fits carry on correctly. The true state on the first day of
+the window is the state at the end of day 30.
+
+```{r window-seir}
+days <- 31:90
+y <- sim$new[days]
+future <- sim$new[91:104]
+state_at <- function(totals, day, n, states) {
+  vapply(states, function(s) totals$counts[totals$date == day & totals$state == s] / n, 0)
+}
+true_state <- state_at(sim$totals, 30, truth$n, c("Exposed", "Infected", "Recovered"))
+round(true_state, 4)
+plot(seq_along(sim$new), sim$new, type = "h", col = "grey60", xlab = "day", ylab = "new infectious per day",
+     main = "The simulated epidemic and the window")
+lines(days, y, type = "h", col = "#2a78d6", lwd = 2)
+legend("topright", c("window to calibrate", "rest of the epidemic"), col = c("#2a78d6", "grey60"), lwd = 2, bty = "n")
+```
+
+## DeepIMC
+
+`calibrate_window()` takes the counts, the model, the method and the known
+values:
+
+```{r deepimc}
+known <- list(n = 10000, recov = 1 / 7, incub = 5)
+fit <- calibrate_window(y, model = "SEIR", method = "DeepIMC", known = known)
+fit
+```
+
+The estimate of R0 comes with a 95% range, from the errors DeepIMC made on
+the 500 most similar of 100,000 simulated calibration windows. The window
+alone does not tell how R0 splits into the transmission probability `ptran`
+and the contact rate `crate` (only their product, R0 = ptran x crate / recov,
+shapes the curve), so those two are reported but not reliable on their own.
+The last line is the *effective* reproduction number on the first day of the
+window: R0 times the share of the population still susceptible.
+
+`plot()` runs the agent-based model 200 times from the estimated state, with
+parameters drawn from the fit's uncertainty, and shows the median and 95% band
+against the counts; with `ahead` it carries on after the window:
+
+```{r deepimc-plot, fig.height = 4}
+plot(fit, ahead = 14, future = future)
+```
+
+## The five methods on the same window
+
+Give several methods to get all the fits at once. The standard methods run
+the agent-based model thousands of times each, so this takes about half an
+hour on one core (DeepIMC takes a fraction of a second).
+
+```{r five-seir}
+methods <- c("DeepIMC", "ABC_SMC", "ABC_MCMC", "DE", "NELDERMEAD")
+fits <- calibrate_window(y, model = "SEIR", method = methods, known = known)
+fits
+```
+
+`summary()` returns the same table as a data frame. Here we add the error of
+each method's R0 and of its starting state:
+
+```{r compare-seir}
+tab <- summary(fits)
+tab$R0_error <- abs(tab$R0 - truth$R0)
+tab$state_error <- vapply(fits, function(f) 100 * mean(abs(f$estimate[c("exposed_share", "infected_share",
+                                                                         "recovered_share")] - true_state)), 0)
+tab[, c("method", "R0", "R0_lower", "R0_upper", "R0_error", "state_error", "seconds", "model_runs")]
+```
+
+`R0_error` is the absolute error of R0 (the truth is 2.5) and `state_error`
+the mean absolute error of the three starting shares, in percentage points.
+Nelder-Mead and differential evolution give a single best fit, without a
+range for R0.
+
+The bands of all methods, with the 14 days after the window as open points:
+
+```{r five-seir-plot, fig.height = 7}
+plot(fits, ahead = 14, future = future, ncol = 3)
+```
+
+Each panel gives the coverage of the window (the share of days inside the 95%
+band) and its interval score (band width plus a penalty for each count
+outside it; lower is better).
+
+## The SIR model
+
+The same works for the SIR model, which needs only `n` and `recov`. This time
+the window is the first 45 days of a smaller epidemic of 5,000 people with
+R0 = 1.8.
+
+```{r simulate-sir}
+simulate_sir <- function(n, R0, recov, crate, prevalence = 0.002, days = 150, seed = 2) {
+  m <- ModelSIRCONN("simulated", n = n, prevalence = prevalence, contact_rate = crate,
+                    transmission_rate = R0 * recov / crate, recovery_rate = recov)
+  verbose_off(m)
+  run(m, ndays = days, seed = seed)
+  tr <- get_hist_transition_matrix(m)
+  tr <- tr[tr$state_from == "Susceptible" & tr$state_to == "Infected", ]
+  new <- tr$counts[match(seq_len(days), tr$date)]
+  new[is.na(new)] <- 0
+  list(new = new, totals = get_hist_total(m))
+}
+sir <- simulate_sir(n = 5000, R0 = 1.8, recov = 0.15, crate = 3)
+y_sir <- sir$new[1:45]
+fits_sir <- calibrate_window(y_sir, model = "SIR", method = methods, n = 5000, recov = 0.15)
+fits_sir
+```
+
+```{r sir-plot, fig.height = 7}
+plot(fits_sir, ahead = 21, future = sir$new[46:66], ncol = 3)
+```
+
+## Bands and scores
+
+`predict_cases()` gives the bands behind these plots: for each day, the
+median and 95% limits of the daily new infectious (`new_*`) and of the number
+currently infectious (`infected_*`). By default it runs the agent-based model
+(`method = "simulation"`); `method = "renewal"` uses the renewal equation,
+about 200 times faster.
+
+```{r predict}
+band <- predict_cases(fits$DeepIMC, ahead = 14, n = 500)
+head(band, 3)
+score_band(band, y)                                        # the window
+score_band(band, future, days = length(y) + seq_along(future))   # the 14 days after it
+```
+
+`coverage()` and `interval_score()` score any band.
+
+## The contact rate
+
+A curve alone shows R0 but not how it splits into `ptran` and `crate`. The
+standard methods therefore fix the contact rate at the middle of the range the
+networks were trained on (10 contacts a day for SEIR, 3 for SIR) and report
+`ptran = R0 x recov / crate`. If the contact rate is known from other data,
+for example a contact survey, give it as a known value; every method then
+reports the transmission probability that goes with it:
+
+```{r crate}
+calibrate_window(y, model = "SEIR", method = "DeepIMC", known = known, crate = 8)
+```
+
+## Changing the settings
+
+The standard methods use the settings of the paper (see
+`?calibrate_window`). `settings` changes them, one list per method; for
+example more particles for ABC-SMC and fewer generations for differential
+evolution:
+
+```{r settings, eval = FALSE}
+calibrate_window(y, model = "SEIR", method = c("ABC_SMC", "DE"), known = known,
+                 settings = list(ABC_SMC = list(n_particles = 500), DE = list(itermax = 50)))
+```
+
+By default the ABC methods compare eleven summary statistics of the observed
+and simulated curves (`epidemic_summary()`), each scaled by its spread over
+simulations from the prior; `abc_distance = "curve"` compares the whole
+curves instead.
+
+## Under the hood
+
+`calibrate_window()` builds a *calibrator* and calls `calibrate()`. The same
+calibrators are available directly: `window_calibrator()` for DeepIMC (also
+for networks you train yourself with `simulate_window_data()` and
+`train_window_calibrator()`) and `window_baselines()` for the standard
+methods. `compare_methods()` runs several calibrators on a list of windows
+and scores them, and `plot_comparison()` and `plot_estimates()` show the
+results.
+
+```{r under-the-hood, eval = FALSE}
+deep <- window_calibrator("SEIR")
+fit <- calibrate(y, deep, n = 10000, recov = 1 / 7, incub = 5)
+standard <- window_baselines("SEIR", methods = c("ABC-SMC", "DE"))
+fit_de <- calibrate(y, standard$DE, n = 10000, recov = 1 / 7, incub = 5)
+```
+
+## Session
+
+```{r session, cache = FALSE}
+sessionInfo()
+```

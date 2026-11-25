@@ -1,0 +1,281 @@
+---
+title: "Real epidemic curves: smoothing, splitting and recovering the curve"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Real epidemic curves: smoothing, splitting and recovering the curve}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+# This file is knitted by vignettes/precompute.R (it runs DeepIMC in Python and the standard methods); the package
+# ships the knitted real-curves.Rmd, so building the package runs no code.
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.path = "figures/curves-", dev = "png", dpi = 110,
+                      fig.width = 8, fig.height = 4.6, out.width = "100%",
+                      cache = TRUE, cache.path = file.path(Sys.getenv("VIGNETTE_CACHE", "cache"), "curves/"))
+options(width = 110)
+```
+
+A real epidemic curve is not one window with constant parameters: people
+change their behaviour, measures are taken and lifted, reporting has a weekly
+cycle. This vignette shows how `calibrate_curve()` handles a whole curve:
+
+* **smoothing**: the counts can be smoothed before they are calibrated (by
+  default with a centred 7-day moving average) or used as they are;
+* **splitting**: the curve can be split where its growth rate changes
+  (segmented regression), and each part calibrated on its own, or calibrated
+  in one window;
+* **recovering the curve**: `recover_curve()` runs the agent-based model again
+  from each part's estimates, to show the epidemic the estimates imply against
+  the counts.
+
+It uses the real data that come with the package. `vignette("calibrating-windows")`
+introduces the five calibration methods, and `vignette("interventions")` uses the
+splits to study interventions.
+
+```{r packages, cache = FALSE}
+library(epiworldRcalibrate)
+```
+
+## The data in the package
+
+Every dataset is loaded with `data()`:
+
+| Dataset | What | Days |
+|---|---|---|
+| `flu_baltimore_1918` | influenza cases, Baltimore, 1918 | 92 |
+| `sars_hongkong_2003` | SARS cases, Hong Kong, 2003 | 107 |
+| `sars_toronto_2003` | SARS cases, Toronto, 2003 | 110 |
+| `mers_korea_2015` | MERS cases, South Korea, 2015 | 36 |
+| `ebola_sierraleone_2014` | Ebola cases, Sierra Leone, 2014-15 | 483 |
+| `ebola_kikwit_1995` | Ebola cases, Kikwit, 1995 | 192 |
+| `smallpox_kosovo_1972` | smallpox cases, Kosovo, 1972 | 57 |
+| `flu_pennsylvania_2009` | influenza cases in a school, Pennsylvania, 2009 | 32 |
+| `measles_hagelloch_1861` | measles cases, Hagelloch, 1861 | 87 |
+| `covid_admissions_utah` | COVID-19 hospital admissions, Utah, 2020-25 | 1,888 |
+| `admissions_utah` | influenza and COVID-19 admissions, Utah, 2020-24 | 1,500 |
+| `covid_utah` | COVID-19 cases, Utah, 2020-25 | 1,876 |
+| `covid_us_states` | COVID-19 cases, US states, 2020-23 | 1,143 per state |
+| `covid_waves_2020` | 27 COVID-19 waves of 2020 | 46 to 153 per wave |
+| `interventions` | dated measures of these outbreaks | 117 measures |
+| `disease_parameters` | incubation period and serial interval of each disease | |
+
+```{r data}
+data(sars_hongkong_2003)
+head(sars_hongkong_2003)
+```
+
+```{r data-plot, fig.height = 5.5}
+show <- list(`Baltimore influenza 1918` = flu_baltimore_1918, `Hong Kong SARS 2003` = sars_hongkong_2003,
+             `Toronto SARS 2003` = sars_toronto_2003, `Kikwit Ebola 1995` = ebola_kikwit_1995,
+             `Kosovo smallpox 1972` = smallpox_kosovo_1972, `Hagelloch measles 1861` = measles_hagelloch_1861)
+op <- par(mfrow = c(2, 3), mar = c(3, 3.5, 2.5, 0.5), las = 1)
+for (nm in names(show)) {
+  d <- show[[nm]]
+  plot(if (is.null(d$date)) d$day else d$date, d$cases, type = "h", col = "#2a78d6", main = nm, xlab = "", ylab = "",
+       cex.main = 0.95)
+}
+par(op)
+```
+
+## Known values and the effective population
+
+Besides the counts, the models need the known values of the disease
+(`vignette("calibrating-windows")`). `known_values()` gives those of the
+paper, from the incubation period and serial interval in
+`disease_parameters`:
+
+```{r known}
+disease_parameters[, 1:4]
+kv <- known_values("SARS", "SEIR")
+kv
+```
+
+The networks were trained on populations of 5,000 to 10,000 people. As in
+the paper, every curve is read as the epidemic of an *effective population* of
+10,000: the people who could be reached by the outbreak the counts come from.
+A part of a curve with more cases than that cannot be calibrated and is
+skipped with a warning.
+
+## Splitting a curve
+
+`split_curve()` fits a negative binomial regression of the daily counts on
+time whose slope (the growth rate of the log counts per day) changes at
+breakpoints (Muggeo 2003; Kuechenhoff et al. 2021). The number of breakpoints,
+0 to 5, is chosen by BIC among the fits whose parts all have at least 15 days.
+
+```{r split}
+s <- split_curve(sars_hongkong_2003$cases, sars_hongkong_2003$date)
+s
+```
+
+`plot()` shows the counts, the regression and the growth rate of each part;
+`interventions` marks the known measures (here the ones in the package for
+Hong Kong):
+
+```{r split-plot, fig.height = 5}
+hk <- subset(interventions, outbreak == "Hong Kong SARS 2003")
+hk[, c("date", "measure", "kind")]
+par(mar = c(7, 4, 3, 1))
+plot(s, interventions = hk, main = "Hong Kong SARS 2003")
+```
+
+For counts by date of report, which have a weekly cycle, use
+`weekday = TRUE` to add day-of-week effects to the regression.
+
+## Calibrating a curve: with or without smoothing, with or without splitting
+
+`calibrate_curve()` does the split, the smoothing and the calibration. Its
+two switches are `split` (`TRUE`, `FALSE`, or the days at which new parts
+start) and `smoothing` (`TRUE` or `"ma7"` for the 7-day moving average,
+`FALSE` or `"none"` for the raw counts, or the other smoothers of
+`smooth_cases()`). Here are the four combinations with DeepIMC:
+
+```{r four-ways}
+y <- sars_hongkong_2003$cases; d <- sars_hongkong_2003$date
+fits <- list(
+  `split, smoothed`     = calibrate_curve(y, d, model = "SEIR", split = TRUE,  smoothing = TRUE,  known = kv),
+  `split, raw`          = calibrate_curve(y, d, model = "SEIR", split = TRUE,  smoothing = FALSE, known = kv),
+  `one window, smoothed` = calibrate_curve(y, d, model = "SEIR", split = FALSE, smoothing = TRUE,  known = kv),
+  `one window, raw`     = calibrate_curve(y, d, model = "SEIR", split = FALSE, smoothing = FALSE, known = kv))
+fits$`split, smoothed`
+fits$`one window, raw`
+```
+
+Each part has its own R0 with a 95% range and its own effective reproduction
+number on its first day (`Reff`, R0 times the share still susceptible).
+
+## Recovering the curve
+
+`recover_curve()` runs the agent-based model 500 times over each part, from
+the part's estimated starting state with parameters drawn from its
+uncertainty. Its median and 95% band are the epidemic the estimates imply; if
+the calibration is good, they follow the observed counts.
+
+```{r recover, fig.height = 7.5}
+runs <- lapply(fits, recover_curve)
+op <- par(mfrow = c(2, 2), mar = c(3, 4, 3, 1))
+for (nm in names(runs)) plot(runs[[nm]], main = nm, cex.main = 0.95)
+par(op)
+```
+
+How close each version comes to the raw counts: the mean absolute error of
+the median, the share of days inside the 95% band, and the interval score
+(band width plus a penalty for each count outside it; lower is better):
+
+```{r recover-scores}
+score_run <- function(r) {
+  r <- r[r$what == "fit", ]
+  c(MAE = mean(abs(r$median - r$observed)), coverage = coverage(r$observed, r$lower, r$upper),
+    interval_score = interval_score(r$observed, r$lower, r$upper))
+}
+round(t(sapply(runs, score_run)), 2)
+```
+
+A single window with constant parameters must describe the rise and the fall
+of the outbreak with one R0; the split lets each part have its own.
+
+`run_on = TRUE` also runs each part's fit on over the next part, as if
+nothing had changed at the breakpoint; `vignette("interventions")` builds on
+this.
+
+```{r run-on, fig.height = 5}
+par(mar = c(7, 4, 3, 1))
+plot(recover_curve(fits$`split, smoothed`, run_on = TRUE), interventions = hk,
+     main = "Each part run on over the next one")
+```
+
+## The five methods on the same curve
+
+`method` chooses the calibration method of every part: `"DeepIMC"`,
+`"ABC_SMC"`, `"ABC_MCMC"`, `"DE"` or `"NELDERMEAD"`. The standard methods take
+minutes per part instead of a fraction of a second.
+
+```{r methods}
+methods <- c("DeepIMC", "ABC_SMC", "ABC_MCMC", "DE", "NELDERMEAD")
+by_method <- lapply(setNames(methods, methods), function(m)
+  calibrate_curve(y, d, model = "SEIR", method = m, known = kv))
+tab <- do.call(rbind, lapply(names(by_method), function(m) {
+  p <- by_method[[m]]$parts
+  data.frame(method = m, part = p$part, from = p$from, to = p$to, R0 = p$R0, R0_lower = p$R0_lower,
+             R0_upper = p$R0_upper, seconds = p$seconds)
+}))
+tab[, c("R0", "R0_lower", "R0_upper")] <- round(tab[, c("R0", "R0_lower", "R0_upper")], 2)
+tab$seconds <- signif(tab$seconds, 2)
+tab
+```
+
+```{r methods-plot, fig.height = 8}
+runs_m <- lapply(by_method, recover_curve)
+op <- par(mfrow = c(3, 2), mar = c(3, 4, 3, 1))
+for (m in names(runs_m)) plot(runs_m[[m]], main = m, cex.main = 0.95)
+par(op)
+round(t(sapply(runs_m, score_run)), 2)
+```
+
+## SEIR or SIR: Utah COVID-19 hospital admissions
+
+The same curve can be calibrated with either model. The Utah COVID-19
+admissions of fall and winter 2020 (by day of admission, so no weekly cycle
+from reporting):
+
+```{r utah}
+u <- subset(covid_admissions_utah, date >= as.Date("2020-09-01") & date <= as.Date("2021-02-28"))
+fit_seir <- calibrate_curve(u$admissions, u$date, model = "SEIR", known = known_values("COVID-19", "SEIR"))
+fit_sir  <- calibrate_curve(u$admissions, u$date, model = "SIR",  known = known_values("COVID-19", "SIR"))
+fit_seir
+fit_sir
+```
+
+```{r utah-plot, fig.height = 9}
+utah <- subset(interventions, outbreak == "Utah COVID-19")
+op <- par(mfrow = c(2, 1), mar = c(6.5, 4, 3, 1))
+plot(recover_curve(fit_seir), interventions = utah, main = "SEIR")
+plot(recover_curve(fit_sir), interventions = utah, main = "SIR")
+par(op)
+```
+
+## Smoothing options
+
+`smooth_cases()` is the smoother behind `calibrate_curve()`. Besides the
+7-day moving average (`"ma7"`) and the raw counts (`"none"`), it offers a
+Gaussian kernel with a bandwidth given as a fraction of the series (`0.2`),
+chosen by leave-one-out cross-validation of the counts (`"cv"`), or chosen by
+calibrating DeepIMC on held-out days (`"calibration"`: the counts are
+smoothed from every other day only, calibrated and run, and scored against the
+days left out; it takes about two minutes per part).
+
+```{r smoothers, fig.height = 4.6}
+yb <- flu_baltimore_1918$cases
+sm <- list(`7-day average` = smooth_cases(yb, "ma7"), `kernel, 20%` = smooth_cases(yb, 0.2),
+           `kernel, cross-validated` = smooth_cases(yb, "cv"),
+           `kernel, chosen by calibration` = smooth_cases(yb, "calibration", model = "SEIR", cores = 4,
+                                                          known = known_values("influenza", "SEIR")))
+sapply(sm, attr, "bandwidth")
+plot(yb, pch = 16, cex = 0.5, xlab = "day", ylab = "daily cases", main = "Baltimore influenza 1918", las = 1, bty = "n")
+cols <- c("#52514e", "#2a78d6", "#c0306a", "#eb6834")
+for (k in seq_along(sm)) lines(sm[[k]], col = cols[k], lwd = 2)
+legend("topright", names(sm), col = cols, lwd = 2, bty = "n", cex = 0.85)
+```
+
+The same options go to `calibrate_curve(smoothing = )`, for example
+`smoothing = "calibration"` (with `cores` for the model runs) or
+`smoothing = 0.2`.
+
+## Summary of the options
+
+| Argument of `calibrate_curve()` | Values |
+|---|---|
+| `model` | `"SEIR"`, `"SIR"` |
+| `method` | `"DeepIMC"`, `"ABC_SMC"`, `"ABC_MCMC"`, `"DE"`, `"NELDERMEAD"` |
+| `split` | `TRUE` (segmented regression), `FALSE` (one window), or the first days of the parts |
+| `smoothing` | `TRUE`/`"ma7"`, `FALSE`/`"none"`, `"cv"`, `"calibration"`, a fraction such as `0.2` |
+| `weekday` | `TRUE` for counts by date of report (day-of-week effects in the split) |
+| `known`, or `n`, `recov`, `incub` | the known values, for example `known_values("COVID-19", "SEIR")` |
+| `crate` | a contact rate known from other data (optional) |
+
+## Session
+
+```{r session, cache = FALSE}
+sessionInfo()
+```

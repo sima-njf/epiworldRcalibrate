@@ -1,0 +1,259 @@
+---
+title: "Interventions: where the curve changed, and the epidemic without the measure"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Interventions: where the curve changed, and the epidemic without the measure}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+# This file is knitted by vignettes/precompute.R (it runs DeepIMC in Python and the standard methods); the package
+# ships the knitted interventions.Rmd, so building the package runs no code.
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.path = "figures/interventions-", dev = "png", dpi = 110,
+                      fig.width = 8, fig.height = 5, out.width = "100%",
+                      cache = TRUE, cache.path = file.path(Sys.getenv("VIGNETTE_CACHE", "cache"), "interventions/"))
+options(width = 110)
+```
+
+When a restriction is introduced (schools closed, gatherings banned, a
+stay-at-home order), the growth of an epidemic curve often changes some days
+later. This vignette shows the three steps the package offers to study such a
+change, as in the paper:
+
+1. **Where did the curve change?** `split_curve()` finds the breakpoints of
+   the growth rate from the counts alone; `find_intervention()` then checks
+   whether one of them follows a known restriction within the incubation
+   period and the growth falls there (the *intervention cut*).
+2. **How did transmission change?** `calibrate_curve()` calibrates the parts
+   before and after the cut, each with its own R0 and effective reproduction
+   number.
+3. **What if the measure had not been taken?** `intervention_effect()` runs
+   the fit to the part before the cut on over the part after it, as if
+   transmission had not changed, and compares the cases it expects with the
+   cases observed: the cases averted.
+
+`vignette("real-curves")` explains splitting, smoothing and recovering a
+curve; `vignette("calibrating-windows")` the calibration methods.
+
+```{r packages, cache = FALSE}
+library(epiworldRcalibrate)
+```
+
+## The data: COVID-19 waves of 2020 and dated measures
+
+`covid_waves_2020` holds the daily COVID-19 cases (by date of report) of 27
+waves of 2020 whose restrictions are dated in the Oxford COVID-19 Government
+Response Tracker; `interventions` holds those restrictions, and the measures
+of the other outbreaks in the package.
+
+```{r data}
+data(covid_waves_2020)
+data(interventions)
+table(covid_waves_2020$wave)
+nz <- subset(covid_waves_2020, region == "New Zealand")
+nz_measures <- subset(interventions, outbreak == "New Zealand COVID-19")
+nz_measures[, c("date", "measure", "kind", "scope")]
+```
+
+## 1. Where did the curve change?
+
+Cases by date of report have a weekly cycle, so the split adds day-of-week
+effects (`weekday = TRUE`):
+
+```{r split, fig.height = 5.5}
+s <- split_curve(nz$cases, nz$date, weekday = TRUE)
+s
+par(mar = c(7.5, 4, 3, 1))
+plot(s, interventions = nz_measures, main = "New Zealand, first wave 2020")
+```
+
+The breakpoints come from the counts alone. Only then are they compared with
+the known restrictions: a breakpoint is an intervention cut when it comes 0 to
+14 days after a restriction (14 days is the longest incubation period of
+COVID-19) and the growth rate falls there. Of several, the one with the
+largest fall is chosen.
+
+```{r find}
+m <- find_intervention(s, interventions, outbreak = "New Zealand COVID-19")
+m
+```
+
+`max_lag` changes the 14 days, for a disease with a different incubation
+period.
+
+## 2. How did transmission change?
+
+We calibrate every part with DeepIMC and the SEIR model, with the known
+values of COVID-19 and an effective population of 10,000 (see
+`vignette("real-curves")`):
+
+```{r fit}
+kv <- known_values("COVID-19", "SEIR")
+fit <- calibrate_curve(nz$cases, nz$date, model = "SEIR", method = "DeepIMC", weekday = TRUE, known = kv)
+fit
+```
+
+R0 describes a population in which everyone is susceptible; `Reff`, R0 times
+the share still susceptible on the first day of the part, is the average
+number of people one infectious person infects at that time.
+
+```{r recover, fig.height = 5.5}
+par(mar = c(7.5, 4, 3, 1))
+plot(recover_curve(fit), interventions = nz_measures, main = "New Zealand: each part calibrated by DeepIMC")
+```
+
+## 3. The epidemic without the measure
+
+`intervention_effect()` finds the cut with `find_intervention()` (or takes
+the one you give with `cut =`), runs the fit to the part before the cut 500
+times over both parts, and compares the runs with the counts after the cut:
+
+```{r effect}
+eff <- intervention_effect(fit, interventions = interventions, outbreak = "New Zealand COVID-19")
+eff
+```
+
+```{r effect-plot, fig.height = 5.5}
+par(mar = c(5, 4, 4, 1))
+plot(eff)
+```
+
+The blue bands are each part's own fit; the pink band is the part before the
+cut carried on as if nothing had changed. The summary is also a data frame:
+
+```{r effect-summary}
+str(eff$summary)
+```
+
+## All 27 waves
+
+The same three steps for every wave. As in the paper, only waves with an
+intervention cut are calibrated, and a part with more than 10,000 cases (the
+effective population) is not calibrated, so the effect cannot be computed
+there.
+
+```{r all-waves}
+one_wave <- function(r) {
+  w <- subset(covid_waves_2020, region == r)
+  sp <- split_curve(w$cases, w$date, weekday = TRUE)
+  mt <- find_intervention(sp, interventions, outbreak = w$outbreak[1])
+  if (!any(mt$chosen)) return(data.frame(region = r, cut = as.Date(NA), note = "no intervention cut"))
+  f <- suppressWarnings(calibrate_curve(w$cases, w$date, model = "SEIR", weekday = TRUE, known = kv))
+  e <- tryCatch(intervention_effect(f, interventions = interventions, outbreak = w$outbreak[1]),
+                error = function(err) conditionMessage(err))
+  if (is.character(e)) return(data.frame(region = r, cut = mt$breakpoint[mt$chosen], note = e))
+  x <- e$summary
+  data.frame(region = r, cut = x$cut, note = "", measure_date = x$measure_date, lag = as.numeric(x$cut - x$measure_date),
+             Reff_before = round(x$Reff_before, 2), Reff_after = round(x$Reff_after, 2),
+             observed_after = x$observed_after, expected_without = round(x$expected_without),
+             averted_pct = round(x$averted_pct))
+}
+waves <- lapply(unique(covid_waves_2020$region), one_wave)
+cols <- unique(unlist(lapply(waves, names)))
+waves <- do.call(rbind, lapply(waves, function(z) {
+  for (c in setdiff(cols, names(z))) z[[c]] <- if (c == "measure_date") as.Date(NA) else NA
+  z[cols]
+}))
+done <- waves[!is.na(waves$averted_pct), ]
+done[order(-done$averted_pct), setdiff(cols, "note")]
+```
+
+```{r all-waves-rest}
+waves[is.na(waves$averted_pct), c("region", "cut", "note")]
+```
+
+Over the `r nrow(done)` waves with an intervention cut that could be
+calibrated on both sides, a median of `r round(median(done$averted_pct))`% of
+the cases expected without the change did not occur. Where the counts after the
+cut come close to the effective population, the fit after the cut describes an
+epidemic running out of susceptible people rather than one changed by the
+measure, and `print()` of the effect says so.
+
+```{r averted-plot, fig.height = 5.5}
+done <- done[order(done$averted_pct), ]
+op <- par(mar = c(4, 9, 1, 1), las = 1)
+barplot(done$averted_pct, names.arg = done$region, horiz = TRUE, col = "#2a78d6", border = NA,
+        xlab = "cases averted after the cut (%)", cex.names = 0.8)
+abline(v = median(done$averted_pct), lty = 2)
+par(op)
+```
+
+## Comparing the methods
+
+The cases averted depend on the fit to the part before the cut. With the
+standard methods (minutes per part instead of a fraction of a second):
+
+```{r methods}
+methods <- c("DeepIMC", "ABC_SMC", "ABC_MCMC", "DE", "NELDERMEAD")
+by_method <- lapply(setNames(methods, methods), function(mm) {
+  f <- calibrate_curve(nz$cases, nz$date, model = "SEIR", method = mm, weekday = TRUE, known = kv)
+  intervention_effect(f, interventions = interventions, outbreak = "New Zealand COVID-19")
+})
+tab <- do.call(rbind, lapply(names(by_method), function(mm) {
+  x <- by_method[[mm]]$summary
+  data.frame(method = mm, R0_before = x$R0_before, R0_after = x$R0_after, Reff_before = x$Reff_before,
+             Reff_after = x$Reff_after, expected_without = round(x$expected_without),
+             expected_lower = round(x$expected_lower), expected_upper = round(x$expected_upper),
+             averted_pct = round(x$averted_pct))
+}))
+tab[, 2:5] <- round(tab[, 2:5], 2)
+tab
+```
+
+```{r methods-plot, fig.height = 9}
+op <- par(mfrow = c(3, 2), mar = c(3, 4, 4, 1))
+for (mm in names(by_method)) plot(by_method[[mm]], main = mm)
+par(op)
+```
+
+## Choosing the cut yourself
+
+The cut need not come from the segmented regression. To cut at a date known
+without looking at the counts, for example the day of the measure plus the
+mean incubation period (5 days for COVID-19), give it as `split` and `cut`:
+
+```{r own-cut}
+measure_day <- m$measure_date[m$chosen]
+own <- measure_day + 5
+fit_own <- calibrate_curve(nz$cases, nz$date, model = "SEIR", split = own, known = kv)
+fit_own
+intervention_effect(fit_own, cut = own, interventions = interventions, outbreak = "New Zealand COVID-19")
+```
+
+## Another outbreak: Hong Kong SARS 2003
+
+The functions work for any curve with dated measures, for example SARS in
+Hong Kong (cases by date of onset, so `weekday = FALSE`):
+
+```{r sars, fig.height = 5.5}
+hk <- subset(interventions, outbreak == "Hong Kong SARS 2003")
+fit_hk <- calibrate_curve(sars_hongkong_2003$cases, sars_hongkong_2003$date, model = "SEIR",
+                          known = known_values("SARS", "SEIR"))
+find_intervention(fit_hk, hk)
+eff_hk <- tryCatch(intervention_effect(fit_hk, interventions = hk), error = function(e) conditionMessage(e))
+eff_hk
+if (inherits(eff_hk, "intervention_effect")) { par(mar = c(5, 4, 4, 1)); plot(eff_hk) }
+```
+
+## What the numbers mean
+
+* The breakpoints are found from the counts alone, and a measure is linked to
+  a breakpoint only by its timing. That a breakpoint follows a measure does
+  not prove that the measure caused it: other things change at the same time
+  (people's own behaviour, testing, the weather). Comparing with places
+  without the measure (for example a difference-in-differences comparison, as
+  the paper does for Utah's 2020 mask mandate) is needed for that.
+* The epidemic without the measure is a scenario of the model, not a
+  forecast: it assumes that nothing but the measure changed at the cut.
+* Each part is read as the epidemic of an effective population of `n`
+  people. When the counts after the cut approach `n`, the fall after the cut
+  can come from fewer susceptible people rather than from the measure; when
+  the counts before the cut are few, the runs of the part before the cut may
+  die out.
+
+## Session
+
+```{r session, cache = FALSE}
+sessionInfo()
+```

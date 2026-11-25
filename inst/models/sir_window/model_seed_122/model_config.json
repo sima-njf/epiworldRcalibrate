@@ -1,0 +1,44 @@
+{
+  "model_type": "SIR",
+  "calibrator": "BiLSTM",
+  "known_names": [
+    "n",
+    "recov"
+  ],
+  "target_names": [
+    "ptran",
+    "R0",
+    "log_infected_share",
+    "log_recovered_share"
+  ],
+  "sequence_length": 365,
+  "hidden_size": 64,
+  "num_layers": 2,
+  "dropout": 0.282453926335454,
+  "epochs": 50,
+  "best_epoch": 48,
+  "batch_size": 32,
+  "learning_rate": 0.000794384841818199,
+  "seed": 122,
+  "physics_weight": 0.0,
+  "incidence_max": 10000.0,
+  "incidence_transform": "log1p",
+  "observation_noise": false,
+  "output_activations": [
+    "sigmoid",
+    "softplus",
+    "sigmoid",
+    "sigmoid"
+  ],
+  "device": "cuda",
+  "grad_clip": 1.0,
+  "lr_schedule": "cosine",
+  "variable_length": true,
+  "window_stop_zeros": 7,
+  "window_min": 15,
+  "window_max": 365,
+  "state_targets": [
+    "log_infected_share",
+    "log_recovered_share"
+  ]
+}

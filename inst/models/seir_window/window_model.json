@@ -1,0 +1,25 @@
+{
+  "model": "SEIR",
+  "seeds": [122, 1, 2, 3, 4],
+  "training_epidemics": 1000000,
+  "epochs": 50,
+  "hyperparameters": {
+    "learning_rate": 0.000716035075444251,
+    "batch_size": 32,
+    "hidden_size": 128,
+    "num_layers": 3,
+    "dropout": 0.131584316681157
+  },
+  "lr_schedule": "cosine",
+  "window_min": 15,
+  "window_max": 365,
+  "n_calib": 99393,
+  "priors": {
+    "n": [5000, 10000],
+    "recov": [0.071, 0.25],
+    "crate": [5, 15],
+    "incub": [1, 21],
+    "R0": [0.8, 5],
+    "preval": [0.001, 0.4]
+  }
+}

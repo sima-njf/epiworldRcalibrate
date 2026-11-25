@@ -5,22 +5,19 @@ template:
     preset: bootstrap
 build:
   new_process: false
-articles: false
 navbar:
   title: "epiworldRcalibrate"
   left:
     - text: "Get Started"
-      href: articles/Installation_guide.html
+      href: articles/calibrating-windows.html
     - text: "Articles"
       menu:
-        - text: "Installation Guide"
-          href: articles/Installation_guide.html
-        - text: "Introduction to Calibration"
-          href: articles/Introduction_to_LSTM_Calibration.html
-        - text: "Real Data Example"
-          href: articles/Real_data_example.html
-        - text: "ABC + BiLSTM Calibration"
-          href: articles/ABC_LSTM_Comparison.html
+        - text: "Calibrating a window with DeepIMC and the standard methods"
+          href: articles/calibrating-windows.html
+        - text: "Real epidemic curves: smoothing, splitting and recovering the curve"
+          href: articles/real-curves.html
+        - text: "Interventions: where the curve changed, and the epidemic without the measure"
+          href: articles/interventions.html
     - text: "Reference"
       href: reference/index.html
   right:
@@ -28,10 +25,11 @@ navbar:
       href: "https://github.com/sima-njf/epiworldRcalibrate"
       aria-label: "GitHub"
 home:
-  title: "BiLSTM Parameter Calibration for epiworldR"
+  title: "Calibration of agent-based epidemic models for epiworldR"
   description: >
-    Fast, deep-learning-based calibration of SIR model parameters
-    using Approximate Bayesian Computation (ABC) and BiLSTM neural networks.
+    DeepIMC, a trained BiLSTM that calibrates SEIR and SIR agent-based models
+    from daily counts in under a second, with ABC-SMC, ABC-MCMC, differential
+    evolution and Nelder-Mead, whole-curve splitting and interventions.
 authors:
   "Sima Najafzadehkhoei":
     href: "https://github.com/sima-njf"
@@ -54,3 +52,73 @@ footer:
       [Bernardo Modenesi](https://github.com/bmodenesi).
     built_with: "Built with [pkgdown](https://pkgdown.r-lib.org/)"
     package: "epiworldRcalibrate"
+reference:
+  - title: "Calibrate a window"
+    desc: "DeepIMC and the four standard methods, for the SEIR and SIR models."
+    contents:
+      - calibrate_window
+      - plot.window_fit
+      - known_values
+      - window_calibrator
+      - window_baselines
+      - calibrate
+      - calibration_estimate
+  - title: "Whole curves: smoothing, splitting, recovering"
+    contents:
+      - calibrate_curve
+      - split_curve
+      - smooth_cases
+      - recover_curve
+  - title: "Interventions"
+    contents:
+      - find_intervention
+      - intervention_effect
+      - plot.intervention_effect
+  - title: "Predictions and scores"
+    contents:
+      - predict_cases
+      - score_band
+      - interval_score
+      - compare_methods
+      - plot_bands
+      - plot_comparison
+      - plot_estimates
+      - plot_ptran_crate
+  - title: "Data"
+    contents:
+      - outbreak_data
+      - covid_waves_2020
+      - interventions
+      - disease_parameters
+      - flu_baltimore_1918
+      - covid_utah
+      - admissions_utah
+      - covid_us_states
+      - real_data_waves
+      - wave_data
+      - real_data_windows
+  - title: "Train your own DeepIMC networks"
+    contents:
+      - simulate_window_data
+      - train_window_calibrator
+      - tune_window_calibrator
+  - title: "General interface for other models and methods"
+    desc: "Simulators, training data, calibrators and comparisons for any model."
+    contents:
+      - new_simulator
+      - sir_simulator
+      - seir_simulator
+      - simulate_training_data
+      - simulate_from_parameters
+      - generate_sir_training_data
+      - generate_seir_training_data
+      - new_training_data
+      - read_training_data
+      - save_training_data
+      - bilstm_calibrator
+      - train_bilstm_calibrator
+      - pretrained_sir_calibrator
+      - make_calibrator
+      - baseline_calibrators
+      - compare_calibrators
+      - epidemic_summary
